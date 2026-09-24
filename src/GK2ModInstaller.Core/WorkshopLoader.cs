@@ -64,9 +64,45 @@ namespace GK2ModInstaller.Core
                 item => ScanItem(item),
                 manualAssemblies, stagedIds);
 
+            // Единый вопрос про моды, уже установленные прежним авто-загрузчиком (New + папка стейджинга есть).
+            var migration = plan.Where(p => p.Kind == DecisionKind.New && p.Staged).ToList();
+            var migratedIds = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            if (migration.Count > 0)
+            {
+                var prompts = migration.Select(ToPrompt).ToList();
+                BulkAnswer bulk = BulkAnswer.Later;
+                try { if (dialog != null) bulk = dialog.AskBulkTrust(prompts); }
+                catch (Exception ex) { log?.Invoke("Workshop: сводный диалог недоступен (" + ex.Message + ")"); }
+
+                foreach (var p in migration)
+                {
+                    if (bulk == BulkAnswer.All)
+                    {
+                        trust.Set(new TrustEntry
+                        {
+                            Id = p.Item.Id,
+                            Sha256 = p.Fingerprint,
+                            State = TrustState.Approved,
+                            Title = p.Item.Title,
+                            Note = "миграция " + DateTime.Now.ToString("yyyy-MM-dd")
+                        });
+                        migratedIds.Add(p.Item.Id);
+                        summary.Migrated++;
+                    }
+                    else if (bulk == BulkAnswer.Later)
+                    {
+                        trust.Set(new TrustEntry { Id = p.Item.Id, Sha256 = p.Fingerprint, State = TrustState.Ask, Title = p.Item.Title, Note = "миграция отложена" });
+                        migratedIds.Add(p.Item.Id);
+                    }
+                    // BulkAnswer.AskEach — спрашиваем индивидуально в общем цикле (kind остаётся New).
+                }
+                if (bulk != BulkAnswer.AskEach) log?.Invoke("Workshop: миграция прежних установок — " + migration.Count + " шт., ответ: " + bulk);
+            }
+
             var pending = new List<ModPrompt>();
             foreach (var entry in plan)
             {
+                if (migratedIds.Contains(entry.Item.Id)) continue;
                 summary.Duplicates += entry.Duplicates != null ? entry.Duplicates.Count : 0;
                 summary.Findings += entry.Findings != null ? entry.Findings.Count : 0;
                 try
@@ -84,8 +120,9 @@ namespace GK2ModInstaller.Core
 
             if (pending.Count > 0)
                 PendingList.Write(Path.Combine(configDir, PendingFileName), pending, log);
-            if (pending.Count > 0 || summary.Approved > 0 || summary.Updates > 0 || summary.Blocked > 0 || summary.Removed > 0)
+            if (pending.Count > 0 || summary.Approved > 0 || summary.Updates > 0 || summary.Blocked > 0 || summary.Removed > 0 || migration.Count > 0)
                 trust.Save(trustPath);
+            LogAcfUpdates(options, plan, log);
             log?.Invoke(summary.ToString());
             return summary;
         }
@@ -95,16 +132,7 @@ namespace GK2ModInstaller.Core
             TrustStore trust, IDialog dialog, List<ModPrompt> pending, LoaderSummary summary, Action<string> log)
         {
             var target = Path.Combine(stagingRoot, entry.Item.Id);
-            var prompt = new ModPrompt
-            {
-                Id = entry.Item.Id,
-                Title = entry.Item.Title,
-                Version = entry.Item.Version,
-                IsUpdate = entry.Kind == DecisionKind.Update,
-                Files = entry.Item.DllFiles != null ? entry.Item.DllFiles.Select(Path.GetFileName).ToList() : new List<string>(),
-                Findings = entry.Findings ?? new List<Finding>(),
-                Duplicates = entry.Duplicates ?? new List<string>()
-            };
+            var prompt = ToPrompt(entry);
 
             ConsentAnswer answer = ConsentAnswer.Later;
             try
@@ -190,6 +218,39 @@ namespace GK2ModInstaller.Core
                 default:
                     // New/Update обрабатываются в Task 9.
                     break;
+            }
+        }
+
+        private static ModPrompt ToPrompt(PlanEntry entry)
+        {
+            return new ModPrompt
+            {
+                Id = entry.Item.Id,
+                Title = entry.Item.Title,
+                Version = entry.Item.Version,
+                IsUpdate = entry.Kind == DecisionKind.Update,
+                Files = entry.Item.DllFiles != null ? entry.Item.DllFiles.Select(Path.GetFileName).ToList() : new List<string>(),
+                Findings = entry.Findings ?? new List<Finding>(),
+                Duplicates = entry.Duplicates ?? new List<string>()
+            };
+        }
+
+        private static void LogAcfUpdates(LoaderOptions options, List<PlanEntry> plan, Action<string> log)
+        {
+            try
+            {
+                if (string.IsNullOrEmpty(options.WorkshopAcfPath) || !File.Exists(options.WorkshopAcfPath)) return;
+                var times = AcfTimes.Parse(File.ReadAllText(options.WorkshopAcfPath));
+                foreach (var entry in plan)
+                {
+                    long t;
+                    if (!times.TryGetValue(entry.Item.Id, out t)) continue;
+                    log?.Invoke("Workshop: ACF — у мода " + entry.Item.Id + " timeupdated=" + t);
+                }
+            }
+            catch (Exception ex)
+            {
+                log?.Invoke("Workshop: ACF не разобран (" + ex.Message + ")");
             }
         }
 

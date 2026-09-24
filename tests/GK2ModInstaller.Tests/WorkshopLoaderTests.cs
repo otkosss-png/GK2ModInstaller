@@ -282,5 +282,103 @@ namespace GK2ModInstaller.Tests
             }
             finally { MakeWorkshop.SafeDelete(root); }
         }
+
+        [Fact]
+        public void Migration_bulk_yes_trusts_all_and_does_not_ask_each()
+        {
+            string root = MakeWorkshop.Tmp();
+            try
+            {
+                var options = Options(root);
+                Directory.CreateDirectory(options.WorkshopRoot);
+                MakeWorkshop.Item(options.WorkshopRoot, "111", "MOD", null);
+                MakeWorkshop.Item(options.WorkshopRoot, "222", "MOD2", null);
+                MakeWorkshop.MakeStaged(options.BepInExRoot, "111", "MOD");
+                MakeWorkshop.MakeStaged(options.BepInExRoot, "222", "MOD2");
+
+                var dialog = new FakeDialog();
+                var summary = WorkshopLoader.Run(options, dialog, null);
+
+                Assert.Equal(new[] { "bulk:111", "bulk:222" }, dialog.Asked.ToArray());
+                var store = TrustStore.Load(Path.Combine(options.BepInExRoot, "config", WorkshopLoader.TrustFileName), null);
+                Assert.Equal(TrustState.Approved, store.Get("111").State);
+                Assert.Equal(TrustState.Approved, store.Get("222").State);
+                Assert.Equal(2, summary.Migrated);
+                Assert.True(File.Exists(Path.Combine(MakeWorkshop.Staging(options.BepInExRoot, "111"), "Mod.dll")));
+            }
+            finally { MakeWorkshop.SafeDelete(root); }
+        }
+
+        [Fact]
+        public void Migration_bulk_no_asks_each_separately()
+        {
+            string root = MakeWorkshop.Tmp();
+            try
+            {
+                var options = Options(root);
+                Directory.CreateDirectory(options.WorkshopRoot);
+                MakeWorkshop.Item(options.WorkshopRoot, "111", "MOD", null);
+                MakeWorkshop.MakeStaged(options.BepInExRoot, "111", "MOD");
+                var dialog = new FakeDialog();
+                dialog.OnBulk = _ => BulkAnswer.AskEach;
+                dialog.OnAsk = _ => ConsentAnswer.Deny;
+
+                var summary = WorkshopLoader.Run(options, dialog, null);
+
+                Assert.Equal(new[] { "bulk:111", "111" }, dialog.Asked.ToArray());
+                Assert.Equal(TrustState.Blocked,
+                    TrustStore.Load(Path.Combine(options.BepInExRoot, "config", WorkshopLoader.TrustFileName), null).Get("111").State);
+                Assert.False(Directory.Exists(MakeWorkshop.Staging(options.BepInExRoot, "111")));
+            }
+            finally { MakeWorkshop.SafeDelete(root); }
+        }
+
+        [Fact]
+        public void Migration_bulk_later_keeps_files_and_asks_again_next_time()
+        {
+            string root = MakeWorkshop.Tmp();
+            try
+            {
+                var options = Options(root);
+                Directory.CreateDirectory(options.WorkshopRoot);
+                MakeWorkshop.Item(options.WorkshopRoot, "111", "MOD", null);
+                MakeWorkshop.MakeStaged(options.BepInExRoot, "111", "MOD");
+                var dialog = new FakeDialog();
+                dialog.OnBulk = _ => BulkAnswer.Later;
+
+                WorkshopLoader.Run(options, dialog, null);
+
+                Assert.True(File.Exists(Path.Combine(MakeWorkshop.Staging(options.BepInExRoot, "111"), "Mod.dll")));
+                Assert.Equal(TrustState.Ask,
+                    TrustStore.Load(Path.Combine(options.BepInExRoot, "config", WorkshopLoader.TrustFileName), null).Get("111").State);
+            }
+            finally { MakeWorkshop.SafeDelete(root); }
+        }
+
+        [Fact]
+        public void Acf_newer_timeupdated_is_logged_for_known_mod()
+        {
+            string root = MakeWorkshop.Tmp();
+            try
+            {
+                var options = Options(root);
+                Directory.CreateDirectory(options.WorkshopRoot);
+                MakeWorkshop.Item(options.WorkshopRoot, "111", "MOD", null);
+                string fp = ModFingerprint.Compute(Path.Combine(options.WorkshopRoot, "111", "BepInEx", "plugins"));
+                string trust = Path.Combine(options.BepInExRoot, "config", WorkshopLoader.TrustFileName);
+                var store = TrustStore.Load(trust, null);
+                store.Set(new TrustEntry { Id = "111", Sha256 = fp, State = TrustState.Approved, Title = "Mod", Note = "2026-09-01" });
+                store.Save(trust);
+                File.WriteAllText(options.WorkshopAcfPath,
+                    "\"AppWorkshop\"\n{\n\t\"WorkshopItemsInstalled\"\n\t{\n\t\t\"111\"\n\t\t{\n\t\t\t\"timeupdated\"\t\t\"3200000000\"\n\t\t}\n\t}\n}\n");
+                MakeWorkshop.MakeStaged(options.BepInExRoot, "111", "MOD");
+
+                var logs = new System.Collections.Generic.List<string>();
+                WorkshopLoader.Run(options, new FakeDialog(), logs.Add);
+
+                Assert.Contains(logs, l => l.Contains("111") && l.Contains("ACF"));
+            }
+            finally { MakeWorkshop.SafeDelete(root); }
+        }
     }
 }
