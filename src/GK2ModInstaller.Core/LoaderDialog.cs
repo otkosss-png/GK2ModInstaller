@@ -14,6 +14,7 @@ namespace GK2ModInstaller.Core
         public string Version { get; set; }
         public bool IsUpdate { get; set; }
         public IReadOnlyList<string> Files { get; set; }
+        public string Target { get; set; }
         public IReadOnlyList<Finding> Findings { get; set; }
         public IReadOnlyList<string> Duplicates { get; set; }
 
@@ -26,6 +27,7 @@ namespace GK2ModInstaller.Core
             if (!string.IsNullOrEmpty(Version)) sb.Append(" v").Append(Version);
             sb.Append(" (id ").Append(Id).Append(')').AppendLine();
             if (Files != null && Files.Count > 0) sb.AppendLine("Файлы: " + string.Join(", ", Files));
+            if (!string.IsNullOrEmpty(Target)) sb.AppendLine("Назначение: " + Target);
 
             if (Findings != null && Findings.Count > 0)
                 sb.AppendLine("Проверка кода: " + string.Join(", ", Categories()));

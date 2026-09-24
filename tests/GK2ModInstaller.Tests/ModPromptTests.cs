@@ -40,6 +40,22 @@ namespace GK2ModInstaller.Tests
         }
 
         [Fact]
+        public void Text_includes_target_when_set()
+        {
+            var prompt = Sample();
+            prompt.Target = @"папка игры (GraveyardKeeper2_Data\Managed и т.п.)";
+            string text = prompt.Text("Мод из Workshop");
+            Assert.Contains("Назначение: ", text);
+            Assert.Contains("папка игры", text);
+        }
+
+        [Fact]
+        public void Text_omits_target_line_when_not_set()
+        {
+            Assert.DoesNotContain("Назначение:", Sample().Text("Мод из Workshop"));
+        }
+
+        [Fact]
         public void Text_without_findings_or_duplicates_says_clean()
         {
             var prompt = Sample();

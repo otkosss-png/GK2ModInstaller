@@ -54,10 +54,14 @@ namespace GK2ModInstaller.Core
         }
     }
 
+    public enum WorkshopItemKind { BepInExPlugin, GameFolder }
+
     public sealed class WorkshopItem
     {
         public string Id { get; set; }
         public string Dir { get; set; }
+        public WorkshopItemKind Kind { get; set; }
+        public string SourceDir { get; set; }
         public string PluginsDir { get; set; }
         public IReadOnlyList<string> DllFiles { get; set; }
         public IReadOnlyList<string> AssemblyNames { get; set; }
@@ -75,12 +79,38 @@ namespace GK2ModInstaller.Core
             foreach (var dir in Directory.GetDirectories(workshopRoot))
             {
                 var plugins = Path.Combine(dir, "BepInEx", "plugins");
-                if (!Directory.Exists(plugins)) continue;
+                var copyToGameFolder = Path.Combine(dir, "CopyToGameFolder");
 
-                var dlls = Directory.GetFiles(plugins, "*.dll", SearchOption.AllDirectories)
+                WorkshopItemKind kind;
+                string sourceDir;
+                string pluginsDir = null;
+
+                if (Directory.Exists(plugins) &&
+                    Directory.GetFiles(plugins, "*.dll", SearchOption.AllDirectories).Length > 0)
+                {
+                    kind = WorkshopItemKind.BepInExPlugin;
+                    sourceDir = plugins;
+                    pluginsDir = plugins;
+                }
+                else if (Directory.Exists(copyToGameFolder) &&
+                         Directory.GetFiles(copyToGameFolder, "*", SearchOption.AllDirectories).Length > 0)
+                {
+                    kind = WorkshopItemKind.GameFolder;
+                    sourceDir = copyToGameFolder;
+                }
+                else if (HasGameLayoutAtRoot(dir))
+                {
+                    kind = WorkshopItemKind.GameFolder;
+                    sourceDir = dir;
+                }
+                else
+                {
+                    continue;
+                }
+
+                var dlls = Directory.GetFiles(sourceDir, "*.dll", SearchOption.AllDirectories)
                                     .OrderBy(f => f, StringComparer.OrdinalIgnoreCase)
                                     .ToList();
-                if (dlls.Count == 0) continue;
 
                 var names = new List<string>();
                 string title = null, version = "";
@@ -95,7 +125,9 @@ namespace GK2ModInstaller.Core
                 {
                     Id = Path.GetFileName(dir),
                     Dir = dir,
-                    PluginsDir = plugins,
+                    Kind = kind,
+                    SourceDir = sourceDir,
+                    PluginsDir = pluginsDir,
                     DllFiles = dlls,
                     AssemblyNames = names,
                     Title = string.IsNullOrEmpty(title) ? Path.GetFileName(dir) : title,
@@ -105,6 +137,18 @@ namespace GK2ModInstaller.Core
 
             result.Sort((a, b) => string.CompareOrdinal(a.Id, b.Id));
             return result;
+        }
+
+        // Айтем, у которого файлы для папки игры лежат прямо в корне (GraveyardKeeper2_Data / Languages).
+        private static bool HasGameLayoutAtRoot(string dir)
+        {
+            foreach (var name in new[] { "GraveyardKeeper2_Data", "Languages" })
+            {
+                var sub = Path.Combine(dir, name);
+                if (Directory.Exists(sub) && Directory.GetFiles(sub, "*", SearchOption.AllDirectories).Length > 0)
+                    return true;
+            }
+            return false;
         }
     }
 }

@@ -89,5 +89,76 @@ namespace GK2ModInstaller.Tests
             Assert.Empty(WorkshopItemsScanner.Scan(Path.Combine(Path.GetTempPath(), "gk2none_" + Guid.NewGuid().ToString("N")), null));
             Assert.Empty(WorkshopItemsScanner.Scan(null, null));
         }
+
+        [Fact]
+        public void CopyToGameFolder_layout_is_detected_as_game_folder_item()
+        {
+            string root = Tmp();
+            try
+            {
+                var itemDir = Path.Combine(root, "3807460866");
+                var gfx = Path.Combine(itemDir, "CopyToGameFolder");
+                var managed = Path.Combine(gfx, "GraveyardKeeper2_Data", "Managed");
+                Directory.CreateDirectory(managed);
+                File.WriteAllBytes(Path.Combine(managed, "GK2RecipePin.dll"), System.Text.Encoding.ASCII.GetBytes("не сборка"));
+                File.WriteAllBytes(Path.Combine(managed, "A_Harmony.dll"), System.Text.Encoding.ASCII.GetBytes("не сборка"));
+                var lang = Path.Combine(gfx, "Languages", "gk2recipepin");
+                Directory.CreateDirectory(lang);
+                File.WriteAllText(Path.Combine(lang, "language.json"), "{}");
+                File.WriteAllText(Path.Combine(itemDir, "README.txt"), "readme");
+
+                var items = WorkshopItemsScanner.Scan(root, null);
+
+                var item = Assert.Single(items);
+                Assert.Equal("3807460866", item.Id);
+                Assert.Equal(WorkshopItemKind.GameFolder, item.Kind);
+                Assert.Equal(gfx, item.SourceDir);
+                Assert.Null(item.PluginsDir);
+                Assert.Equal(new[] { "A_Harmony", "GK2RecipePin" }, item.AssemblyNames.ToArray());
+                Assert.Equal(2, item.DllFiles.Count);
+            }
+            finally { Directory.Delete(root, true); }
+        }
+
+        [Fact]
+        public void Root_game_folder_layout_is_detected_as_game_folder_item()
+        {
+            string root = Tmp();
+            try
+            {
+                var itemDir = Path.Combine(root, "3807460867");
+                var managed = Path.Combine(itemDir, "GraveyardKeeper2_Data", "Managed");
+                Directory.CreateDirectory(managed);
+                File.WriteAllText(Path.Combine(managed, "Mod.dll"), "x");
+
+                var items = WorkshopItemsScanner.Scan(root, null);
+
+                var item = Assert.Single(items);
+                Assert.Equal(WorkshopItemKind.GameFolder, item.Kind);
+                Assert.Equal(itemDir, item.SourceDir);
+                Assert.Null(item.PluginsDir);
+            }
+            finally { Directory.Delete(root, true); }
+        }
+
+        [Fact]
+        public void Item_with_no_recognised_layout_is_skipped_silently()
+        {
+            string root = Tmp();
+            try
+            {
+                var itemDir = Path.Combine(root, "500");
+                Directory.CreateDirectory(itemDir);
+                File.WriteAllText(Path.Combine(itemDir, "notes.txt"), "hi");
+                File.WriteAllText(Path.Combine(itemDir, "mod.zip"), "zip");
+                var logs = new System.Collections.Generic.List<string>();
+
+                var items = WorkshopItemsScanner.Scan(root, logs.Add);
+
+                Assert.Empty(items);
+                Assert.DoesNotContain(logs, l => l.Contains("500"));
+            }
+            finally { Directory.Delete(root, true); }
+        }
     }
 }

@@ -10,6 +10,7 @@
   <ItemGroup>
     <!-- Компилируем Core-файлы прямо в патчер, чтобы не тащить Core.dll в BepInEx/patchers -->
     <Compile Include="..\GK2ModInstaller.Core\WorkshopSync.cs" Link="WorkshopSync.cs" />
+    <Compile Include="..\GK2ModInstaller.Core\GameFolderInstaller.cs" Link="GameFolderInstaller.cs" />
     <Compile Include="..\GK2ModInstaller.Core\WorkshopLoader.cs" Link="WorkshopLoader.cs" />
     <Compile Include="..\GK2ModInstaller.Core\WorkshopItems.cs" Link="WorkshopItems.cs" />
     <Compile Include="..\GK2ModInstaller.Core\TrustStore.cs" Link="TrustStore.cs" />

@@ -27,6 +27,20 @@ namespace GK2ModInstaller.Tests
             }
         }
 
+        // Создаёт game-folder айтем: CopyToGameFolder\<relPath> с содержимым content.
+        public static void GameFolderItem(string workshopRoot, string id, string relPath, string content)
+        {
+            var target = Path.Combine(workshopRoot, id, "CopyToGameFolder", relPath);
+            Directory.CreateDirectory(Path.GetDirectoryName(target));
+            File.WriteAllText(target, content);
+        }
+
+        public static string BackupDir(string bepInExRoot, string id)
+            => Path.Combine(bepInExRoot, "config", "GK2_WorkshopLoader.backup", id);
+
+        public static string BackupManifest(string bepInExRoot, string id)
+            => Path.Combine(BackupDir(bepInExRoot, id), "manifest.txt");
+
         public static string Staging(string bepInExRoot, string id)
             => Path.Combine(bepInExRoot, "plugins", "_Workshop", id);
 

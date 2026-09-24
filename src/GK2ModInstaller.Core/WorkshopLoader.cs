@@ -52,15 +52,32 @@ namespace GK2ModInstaller.Core
             var trustPath = Path.Combine(configDir, TrustFileName);
             Directory.CreateDirectory(stagingRoot);
 
+            // Папка игры — родитель BepInEx. Без неё моды в папку игры установить нельзя.
+            var gameRoot = Directory.GetParent(options.BepInExRoot)?.FullName;
+
             var trust = TrustStore.Load(trustPath, log);
             var items = WorkshopItemsScanner.Scan(options.WorkshopRoot, log);
-            var stagedIds = Directory.GetDirectories(stagingRoot).Select(Path.GetFileName).ToList();
+            if (string.IsNullOrEmpty(gameRoot))
+            {
+                log?.Invoke("Workshop: папка игры не определена — моды в папку игры не поддерживаются");
+                items = items.Where(i => i.Kind != WorkshopItemKind.GameFolder).ToList();
+            }
+
+            // Установленным считаем и то, что лежит в стейджинге (плагины), и то, для чего есть бэкап
+            // (моды в папку игры): последнее нужно для миграции и распознавания "уже стоит".
+            var stagedSet = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            foreach (var d in Directory.GetDirectories(stagingRoot)) stagedSet.Add(Path.GetFileName(d));
+            var backupBase = Path.Combine(configDir, GameFolderInstaller.BackupDirName);
+            if (Directory.Exists(backupBase))
+                foreach (var d in Directory.GetDirectories(backupBase)) stagedSet.Add(Path.GetFileName(d));
+            var stagedIds = stagedSet.ToList();
+
             var manualAssemblies = CollectManualAssemblies(pluginsDir);
 
             summary.Items = items.Count;
             var plan = ConsentPlanner.Build(
                 items, trust,
-                item => ModFingerprint.Compute(item.PluginsDir),
+                item => ModFingerprint.Compute(item.SourceDir),
                 item => ScanItem(item),
                 manualAssemblies, stagedIds);
 
@@ -108,9 +125,9 @@ namespace GK2ModInstaller.Core
                 try
                 {
                     if (entry.Kind == DecisionKind.New || entry.Kind == DecisionKind.Update)
-                        ConsentAndApply(entry, stagingRoot, configDir, trust, dialog, pending, summary, log);
+                        ConsentAndApply(entry, stagingRoot, configDir, gameRoot, trust, dialog, pending, summary, log);
                     else
-                        ApplyKnownOrBlocked(entry, summary, stagingRoot, configDir, log);
+                        ApplyKnownOrBlocked(entry, summary, stagingRoot, configDir, gameRoot, log);
                 }
                 catch (Exception ex)
                 {
@@ -137,7 +154,7 @@ namespace GK2ModInstaller.Core
         }
 
         // Спрашивает игрока про New/Update; ответ определяет копирование и запись в trust.
-        private static void ConsentAndApply(PlanEntry entry, string stagingRoot, string configDir,
+        private static void ConsentAndApply(PlanEntry entry, string stagingRoot, string configDir, string gameRoot,
             TrustStore trust, IDialog dialog, List<ModPrompt> pending, LoaderSummary summary, Action<string> log)
         {
             var target = Path.Combine(stagingRoot, entry.Item.Id);
@@ -156,9 +173,27 @@ namespace GK2ModInstaller.Core
 
             if (answer == ConsentAnswer.Approve)
             {
-                WorkshopSync.DeleteDir(target);
-                WorkshopSync.CopyDir(entry.Item.PluginsDir, target);
-                CopyItemConfigs(entry.Item, configDir, log);
+                var backupRoot = Path.Combine(configDir, GameFolderInstaller.BackupDirName, entry.Item.Id);
+                if (entry.Item.Kind == WorkshopItemKind.GameFolder)
+                {
+                    if (string.IsNullOrEmpty(gameRoot))
+                    {
+                        log?.Invoke("Workshop: game-folder мод " + entry.Item.Id + " — папка игры не определена, пропуск");
+                    }
+                    else
+                    {
+                        // Сначала откатываем прошлую установку: бэкап должен хранить истинные оригиналы.
+                        GameFolderInstaller.Restore(gameRoot, backupRoot, log);
+                        int n = GameFolderInstaller.Install(entry.Item.SourceDir, gameRoot, backupRoot, log);
+                        log?.Invoke("Workshop: game-folder мод " + entry.Item.Id + " — установлено файлов " + n);
+                    }
+                }
+                else
+                {
+                    WorkshopSync.DeleteDir(target);
+                    WorkshopSync.CopyDir(entry.Item.SourceDir, target);
+                    CopyItemConfigs(entry.Item, configDir, log);
+                }
                 trust.Set(new TrustEntry
                 {
                     Id = entry.Item.Id,
@@ -172,7 +207,16 @@ namespace GK2ModInstaller.Core
             }
             else if (answer == ConsentAnswer.Deny)
             {
-                WorkshopSync.DeleteDir(target);
+                if (entry.Item.Kind == WorkshopItemKind.GameFolder)
+                {
+                    if (!string.IsNullOrEmpty(gameRoot))
+                        GameFolderInstaller.Restore(gameRoot,
+                            Path.Combine(configDir, GameFolderInstaller.BackupDirName, entry.Item.Id), log);
+                }
+                else
+                {
+                    WorkshopSync.DeleteDir(target);
+                }
                 trust.Set(new TrustEntry
                 {
                     Id = entry.Item.Id,
@@ -212,32 +256,65 @@ namespace GK2ModInstaller.Core
             }
         }
 
-        private static void ApplyKnownOrBlocked(PlanEntry entry, LoaderSummary summary, string stagingRoot, string configDir, Action<string> log)
+        private static void ApplyKnownOrBlocked(PlanEntry entry, LoaderSummary summary, string stagingRoot, string configDir, string gameRoot, Action<string> log)
         {
             var target = Path.Combine(stagingRoot, entry.Item.Id);
+            var backupRoot = Path.Combine(configDir, GameFolderInstaller.BackupDirName, entry.Item.Id);
+            // Removed-записи создаются по id из стейджинга и не знают Kind. Признак мода в папку игры —
+            // сохранённый бэкап: у плагинов его не бывает.
+            bool gameFolder = entry.Item.Kind == WorkshopItemKind.GameFolder || Directory.Exists(backupRoot);
             switch (entry.Kind)
             {
                 case DecisionKind.Known:
-                    // Уже одобрено: копируем, только если копии нет (первый запуск после ручной чистки).
-                    if (!Directory.Exists(target))
+                    if (entry.Item.Kind == WorkshopItemKind.GameFolder)
                     {
-                        WorkshopSync.CopyDir(entry.Item.PluginsDir, target);
+                        if (string.IsNullOrEmpty(gameRoot))
+                        {
+                            log?.Invoke("Workshop: game-folder мод " + entry.Item.Id + " — папка игры не определена, пропуск");
+                            break;
+                        }
+                        // Уже одобрено: если установки нет (пропал манифест) — восстанавливаем.
+                        if (!File.Exists(Path.Combine(backupRoot, GameFolderInstaller.ManifestFileName)))
+                        {
+                            int n = GameFolderInstaller.Install(entry.Item.SourceDir, gameRoot, backupRoot, log);
+                            log?.Invoke("Workshop: восстановлена установка game-folder мода " + entry.Item.Id + " — файлов " + n);
+                        }
+                    }
+                    // Плагин: копируем, только если копии нет (первый запуск после ручной чистки).
+                    else if (!Directory.Exists(target))
+                    {
+                        WorkshopSync.CopyDir(entry.Item.SourceDir, target);
                         CopyItemConfigs(entry.Item, configDir, log);
                         log?.Invoke("Workshop: восстановлена копия одобренного мода " + entry.Item.Id);
                     }
                     break;
                 case DecisionKind.Blocked:
-                    WorkshopSync.DeleteDir(target);
+                    if (gameFolder)
+                    {
+                        if (!string.IsNullOrEmpty(gameRoot)) GameFolderInstaller.Restore(gameRoot, backupRoot, log);
+                    }
+                    else
+                    {
+                        WorkshopSync.DeleteDir(target);
+                    }
                     summary.Blocked++;
                     log?.Invoke("Workshop: заблокированный мод не грузим — " + entry.Item.Id);
                     break;
                 case DecisionKind.Removed:
-                    WorkshopSync.DeleteDir(target);
+                    if (gameFolder)
+                    {
+                        if (!string.IsNullOrEmpty(gameRoot)) GameFolderInstaller.Restore(gameRoot, backupRoot, log);
+                        log?.Invoke("Workshop: game-folder мод отписан, файлы возвращены — " + entry.Item.Id);
+                    }
+                    else
+                    {
+                        WorkshopSync.DeleteDir(target);
+                        log?.Invoke("Workshop: мод отписан, копия удалена — " + entry.Item.Id);
+                    }
                     summary.Removed++;
-                    log?.Invoke("Workshop: мод отписан, копия удалена — " + entry.Item.Id);
                     break;
                 default:
-                    // New/Update обрабатываются в Task 9.
+                    // New/Update обрабатываются выше.
                     break;
             }
         }
@@ -251,6 +328,9 @@ namespace GK2ModInstaller.Core
                 Version = entry.Item.Version,
                 IsUpdate = entry.Kind == DecisionKind.Update,
                 Files = entry.Item.DllFiles != null ? entry.Item.DllFiles.Select(Path.GetFileName).ToList() : new List<string>(),
+                Target = entry.Item.Kind == WorkshopItemKind.GameFolder
+                    ? "папка игры (GraveyardKeeper2_Data\\Managed и т.п.)"
+                    : "BepInEx\\plugins",
                 Findings = entry.Findings ?? new List<Finding>(),
                 Duplicates = entry.Duplicates ?? new List<string>()
             };
