@@ -7,6 +7,9 @@
 
 - Находит папку игры автоматически (через Steam) или даёт выбрать вручную.
 - Ставит BepInEx (загрузчик модов) и GK2 Mod Framework (внутриигровое меню **Mods**).
+- **Автозагрузка Workshop-модов:** патчер `GK2.WorkshopAutoLoader` сам подхватывает код-моды из
+  подписанных Steam Workshop-айтемов (раскладывает их в `BepInEx\plugins\_Workshop\`) — без
+  ручного копирования. Можно отключить галочкой в установщике.
 - Умеет удалять BepInEx (только свои файлы, игру не трогает).
 - Опционально делает бэкап существующей папки `BepInEx`.
 
@@ -54,6 +57,9 @@ One-click installer for **Graveyard Keeper 2** mods: installs **BepInEx 5.4.23.5
 
 - Auto-detects the game folder (via Steam) or lets you pick it manually.
 - Installs BepInEx (mod loader) and GK2 Mod Framework (in-game **Mods** menu).
+- **Workshop mod auto-loading:** the `GK2.WorkshopAutoLoader` patcher picks up code mods from
+  subscribed Steam Workshop items automatically (stages them into `BepInEx\plugins\_Workshop\`),
+  no manual copying. Can be disabled with a checkbox in the installer.
 - Can uninstall BepInEx (its own files only).
 - Optional backup of the existing `BepInEx` folder.
 
