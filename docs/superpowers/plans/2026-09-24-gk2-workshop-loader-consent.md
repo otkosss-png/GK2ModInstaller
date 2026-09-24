@@ -2303,7 +2303,7 @@ Expected: падают новые тесты (`New_mod_approved_is_copied_and_re
 ```csharp
             if (pending.Count > 0)
                 PendingList.Write(Path.Combine(configDir, PendingFileName), pending, log);
-            if (pending.Count > 0 || summary.Approved > 0 || summary.Updates > 0 || summary.Blocked > 0 || summary.Removed > 0)
+            if (pending.Count > 0 || summary.Approved > 0 || summary.Updates > 0 || summary.Blocked > 0 || summary.Removed > 0 || migration.Count > 0)
                 trust.Save(trustPath);
 ```
 4) удалить прежнюю строку `if (summary.Removed > 0 || summary.Blocked > 0) trust.Save(trustPath);`
@@ -2473,6 +2473,7 @@ Expected: падают `Migration_*` (нет сводного диалога) и
                     else if (bulk == BulkAnswer.Later)
                     {
                         trust.Set(new TrustEntry { Id = p.Item.Id, Sha256 = p.Fingerprint, State = TrustState.Ask, Title = p.Item.Title, Note = "миграция отложена" });
+                        migratedIds.Add(p.Item.Id);   // сейчас не спрашиваем — файлы оставляем как есть
                     }
                     // BulkAnswer.AskEach — спрашиваем индивидуально в общем цикле (kind остаётся New)
                 }
