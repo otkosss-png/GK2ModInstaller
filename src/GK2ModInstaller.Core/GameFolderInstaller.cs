@@ -83,12 +83,17 @@ namespace GK2ModInstaller.Core
         public static int Restore(string gameRoot, string backupRoot, Action<string> log)
         {
             var restored = 0;
+            // Продиктовано ревью: бэкап — единственная копия оригиналов, поэтому удаляем его только
+            // если ВСЕ записи манифеста обработаны успешно И папка игры была известна. Иначе —
+            // сохраняем для повторного отката (например, файл держит запущенная игра).
+            var failed = false;
+            var gameRootValid = !string.IsNullOrEmpty(gameRoot);
             try
             {
                 if (string.IsNullOrEmpty(backupRoot) || !Directory.Exists(backupRoot)) return 0;
-                if (string.IsNullOrEmpty(gameRoot))
+                if (!gameRootValid)
                 {
-                    log?.Invoke("game-folder: не задана папка игры — откат невозможен");
+                    log?.Invoke("game-folder: не задана папка игры — откат невозможен, бэкап сохранён: " + backupRoot);
                     return 0;
                 }
 
@@ -123,6 +128,7 @@ namespace GK2ModInstaller.Core
                                 }
                                 else
                                 {
+                                    failed = true;
                                     log?.Invoke("game-folder: бэкап не найден — " + rel);
                                 }
                             }
@@ -138,6 +144,7 @@ namespace GK2ModInstaller.Core
                         }
                         catch (Exception ex)
                         {
+                            failed = true;
                             log?.Invoke("game-folder: не удалось откатить " + rel + " (" + ex.Message + ")");
                         }
                     }
@@ -149,9 +156,15 @@ namespace GK2ModInstaller.Core
             }
             catch (Exception ex)
             {
+                failed = true;
                 log?.Invoke("game-folder: откат прерван (" + ex.Message + ")");
             }
-            finally
+
+            if (failed)
+            {
+                log?.Invoke("game-folder: восстановление неполное — бэкап сохранён: " + backupRoot);
+            }
+            else if (gameRootValid)
             {
                 try { if (Directory.Exists(backupRoot)) Directory.Delete(backupRoot, true); }
                 catch (Exception ex) { log?.Invoke("game-folder: бэкап не удалён (" + ex.Message + ")"); }

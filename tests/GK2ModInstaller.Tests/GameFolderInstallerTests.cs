@@ -181,5 +181,40 @@ namespace GK2ModInstaller.Tests
             }
             finally { Del(game); Del(backupParent); }
         }
+
+        [Fact]
+        public void Restore_keeps_backup_when_a_file_cannot_be_restored()
+        {
+            string game = NewDir("gk2gfgame");
+            string backupParent = NewDir("gk2gfbak");
+            string backup = Path.Combine(backupParent, "item");
+            try
+            {
+                Directory.CreateDirectory(Path.Combine(backup, "files"));
+                File.WriteAllText(Path.Combine(backup, "files", "blocked.txt"), "ORIG");
+                File.WriteAllText(Path.Combine(backup, "manifest.txt"), "blocked.txt|1\n");
+                // Цель — каталог: File.Copy(..., true) на Windows детерминированно падает,
+                // имитируя заблокированный запущенной игрой файл.
+                Directory.CreateDirectory(Path.Combine(game, "blocked.txt"));
+
+                var logs = new System.Collections.Generic.List<string>();
+                int first = GameFolderInstaller.Restore(game, backup, logs.Add);
+
+                Assert.Equal(0, first);
+                Assert.Contains(logs, l => l.Contains("не удалось откатить"));
+                Assert.True(Directory.Exists(backup));
+                Assert.True(File.Exists(Path.Combine(backup, "manifest.txt")));
+                Assert.True(File.Exists(Path.Combine(backup, "files", "blocked.txt")));
+
+                // Убираем помеху — повторный откат должен пройти и удалить бэкап.
+                Directory.Delete(Path.Combine(game, "blocked.txt"));
+                int second = GameFolderInstaller.Restore(game, backup, logs.Add);
+
+                Assert.Equal(1, second);
+                Assert.False(Directory.Exists(backup));
+                Assert.Equal("ORIG", File.ReadAllText(Path.Combine(game, "blocked.txt")));
+            }
+            finally { Del(game); Del(backupParent); }
+        }
     }
 }
