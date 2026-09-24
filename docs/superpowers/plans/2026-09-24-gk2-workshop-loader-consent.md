@@ -370,6 +370,12 @@ namespace GK2ModInstaller.Tests
                 string a = ModFingerprint.Compute(dir);
                 File.WriteAllText(Path.Combine(dir, "settings.cfg"), "user edited");
                 Assert.Equal(a, ModFingerprint.Compute(dir));
+
+                Directory.CreateDirectory(Path.Combine(dir, "config"));
+                File.WriteAllText(Path.Combine(dir, "config", "notes.txt"), "user edited");
+                Directory.CreateDirectory(Path.Combine(dir, "sub", "config"));
+                File.WriteAllText(Path.Combine(dir, "sub", "config", "notes.txt"), "user edited");
+                Assert.Equal(a, ModFingerprint.Compute(dir));
             }
             finally { if (Directory.Exists(dir)) Directory.Delete(dir, true); }
         }
@@ -413,7 +419,7 @@ namespace GK2ModInstaller.Core
             {
                 var rel = full.Substring(pluginsDir.Length).TrimStart('\\', '/').Replace('\\', '/').ToLowerInvariant();
                 if (rel.EndsWith(".cfg", StringComparison.OrdinalIgnoreCase)) continue;
-                if (rel.Contains("/config/")) continue;
+                if (rel == "config" || rel.StartsWith("config/", StringComparison.Ordinal) || rel.Contains("/config/")) continue;
                 files.Add(new KeyValuePair<string, string>(rel, full));
             }
             files.Sort((a, b) => string.CompareOrdinal(a.Key, b.Key));
