@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net48</TargetFramework>
+    <UseWindowsForms>true</UseWindowsForms>
+    <LangVersion>9.0</LangVersion>
+    <AssemblyName>GK2ModInstaller</AssemblyName>
+    <RootNamespace>GK2ModInstaller.App</RootNamespace>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\GK2ModInstaller.Core\GK2ModInstaller.Core.csproj" />
+  </ItemGroup>
+  <!-- Если WinForms не резолвится на net48 — добавить:
+       <Reference Include="System.Windows.Forms" /><Reference Include="System.Drawing" /> -->
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NETFramework.ReferenceAssemblies" Version="1.0.3" PrivateAssets="all" />
+  </ItemGroup>
+</Project>
