@@ -793,12 +793,40 @@ namespace GK2ModInstaller.Tests
         }
 
         [Fact]
-        public void Clean_assembly_has_no_network_process_or_registry()
+        public void Clean_assembly_produces_no_findings()
         {
-            var found = CodeScan.Scan(typeof(GK2ModInstaller.Core.ModFingerprint).Assembly.Location);
-            Assert.DoesNotContain(found, f => f.Category == FindingCategory.Network);
-            Assert.DoesNotContain(found, f => f.Category == FindingCategory.Process);
-            Assert.DoesNotContain(found, f => f.Category == FindingCategory.Registry);
+            string path = Path.Combine(Path.GetTempPath(), "gk2clean_" + Guid.NewGuid().ToString("N") + ".dll");
+            try
+            {
+                WriteCleanProbe(path);
+                Assert.Empty(CodeScan.Scan(path));
+            }
+            finally { if (File.Exists(path)) File.Delete(path); }
+        }
+
+        // Эталон «чистой» сборки собираем сами Cecil'ом: ни Core (там есть Process/File.Delete
+        // в установщике), ни сама тестовая сборка (в ней DangerousSample) эталоном быть не могут.
+        private static void WriteCleanProbe(string path)
+        {
+            var asm = Mono.Cecil.AssemblyDefinition.CreateAssembly(
+                new Mono.Cecil.AssemblyNameDefinition("CleanProbe", new Version(1, 0, 0, 0)),
+                "CleanProbe", Mono.Cecil.ModuleKind.Dll);
+            var type = new Mono.Cecil.TypeDefinition("CleanProbe", "CleanSample",
+                Mono.Cecil.TypeAttributes.Public | Mono.Cecil.TypeAttributes.Abstract | Mono.Cecil.TypeAttributes.Sealed);
+            asm.MainModule.Types.Add(type);
+            var method = new Mono.Cecil.MethodDefinition("Add",
+                Mono.Cecil.MethodAttributes.Public | Mono.Cecil.MethodAttributes.Static,
+                asm.MainModule.TypeSystem.Int32);
+            method.Parameters.Add(new Mono.Cecil.ParameterDefinition("a", Mono.Cecil.ParameterAttributes.None, asm.MainModule.TypeSystem.Int32));
+            method.Parameters.Add(new Mono.Cecil.ParameterDefinition("b", Mono.Cecil.ParameterAttributes.None, asm.MainModule.TypeSystem.Int32));
+            method.Body = new Mono.Cecil.Cil.MethodBody(method);
+            var il = method.Body.GetILProcessor();
+            il.Emit(Mono.Cecil.Cil.OpCodes.Ldarg_0);
+            il.Emit(Mono.Cecil.Cil.OpCodes.Ldarg_1);
+            il.Emit(Mono.Cecil.Cil.OpCodes.Add);
+            il.Emit(Mono.Cecil.Cil.OpCodes.Ret);
+            type.Methods.Add(method);
+            asm.Write(path);
         }
 
         [Fact]
@@ -935,7 +963,7 @@ namespace GK2ModInstaller.Core
 - [ ] **Step 5: Запустить — проходят**
 
 Run: `& "C:\Users\Проньки\dotnet-sdk\dotnet.exe" test -c Release --filter "FullyQualifiedName~CodeScanTests"`
-Expected: `Passed! - Failed: 0, Passed: 4`. Если `Clean_assembly...` падает — проверить, что в Core нет ссылок на `Process`/`HttpClient`/`Registry`.
+Expected: `Passed! - Failed: 0, Passed: 4`. «Чистая» сборка собирается Cecil'ом прямо в тесте (Core и тестовая сборка эталоном быть не могут: в Core установщик использует `Process` и `File.Delete`, в тестовой — `DangerousSample`).
 
 - [ ] **Step 6: Коммит**
 
