@@ -39,7 +39,7 @@ internal static class Program
         Console.WriteLine("Steam user: " + SteamFriends.GetPersonaName());
 
         if (mode == "delete") return DoDelete(deleteId);
-        if (mode == "update") return DoUpdate(updateId, title, desc, tags, preview, pub);
+        if (mode == "update") return DoUpdate(updateId, folder, title, desc, tags, preview, pub);
         return DoCreate(folder, title, desc, tags, pub);
     }
 
@@ -79,12 +79,13 @@ internal static class Program
         return Submit(handle, id.m_PublishedFileId);
     }
 
-    private static int DoUpdate(ulong id, string title, string desc, string tags, string preview, bool pub)
+    private static int DoUpdate(ulong id, string folder, string title, string desc, string tags, string preview, bool pub)
     {
         var handle = SteamUGC.StartItemUpdate(new AppId_t(AppId), new PublishedFileId_t(id));
         if (title != null) SteamUGC.SetItemTitle(handle, title);
         if (desc != null) SteamUGC.SetItemDescription(handle, desc);
         if (!string.IsNullOrEmpty(tags)) SteamUGC.SetItemTags(handle, new List<string>(tags.Split(',')));
+        if (!string.IsNullOrEmpty(folder)) Console.WriteLine("SetItemContent=" + SteamUGC.SetItemContent(handle, Path.GetFullPath(folder)));
         if (preview != null) Console.WriteLine("SetItemPreview=" + SteamUGC.SetItemPreview(handle, Path.GetFullPath(preview)));
         if (pub) SteamUGC.SetItemVisibility(handle, ERemoteStoragePublishedFileVisibility.k_ERemoteStoragePublishedFileVisibilityPublic);
         Console.WriteLine("updating item " + id);
