@@ -790,7 +790,7 @@ namespace GK2ModInstaller.Tests
         [Fact]
         public void Clean_assembly_has_no_network_process_or_registry()
         {
-            var found = CodeScan.Scan(typeof(GK2ModInstaller.Core.ConsentPlanner).Assembly.Location);
+            var found = CodeScan.Scan(typeof(GK2ModInstaller.Core.ModFingerprint).Assembly.Location);
             Assert.DoesNotContain(found, f => f.Category == FindingCategory.Network);
             Assert.DoesNotContain(found, f => f.Category == FindingCategory.Process);
             Assert.DoesNotContain(found, f => f.Category == FindingCategory.Registry);
@@ -2755,7 +2755,7 @@ Expected: `SetItemContent=True`, `SubmitItemUpdate: k_EResultOK item 3807406994`
 
 ```powershell
 Set-Location "C:\Users\Проньки\Documents\OpenCode\GK2ModInstaller"
-git tag v1.2.0; git push origin main; git push origin v1.2.0
+git tag v1.2.0; git push origin master; git push origin v1.2.0
 & "C:\Program Files\GitHub CLI\gh.exe" release create v1.2.0 "dist\GK2ModInstaller.exe" --title "GK2 Mod Installer v1.2.0" --notes-file "dist\RELEASE_NOTES.md"
 ```
 
