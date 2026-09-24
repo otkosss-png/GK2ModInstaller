@@ -1406,7 +1406,7 @@ namespace GK2ModInstaller.Tests
         {
             string text = Sample(true).Text("Обновление мода");
             Assert.Contains("Обновление мода", text);
-            Assert.Contains("прежняя версия", text);
+            Assert.Contains("прежняя одобренная версия", text);
         }
 
         [Fact]
@@ -1437,9 +1437,16 @@ namespace GK2ModInstaller.Tests
         [Fact]
         public void PendingList_never_throws_on_bad_path()
         {
-            var logs = new List<string>();
-            PendingList.Write(Path.Combine(Path.GetTempPath(), "no_such_dir_" + Guid.NewGuid().ToString("N"), "x", "y.txt"), new[] { Sample() }, logs.Add);
-            Assert.Contains(logs, l => l.Contains("pending"));
+            // «Плохой путь» делаем так: на месте папки лежит файл — CreateDirectory упадёт.
+            string blocker = Path.Combine(Path.GetTempPath(), "gk2blocker_" + Guid.NewGuid().ToString("N"));
+            File.WriteAllText(blocker, "x");
+            try
+            {
+                var logs = new List<string>();
+                PendingList.Write(Path.Combine(blocker, "y.txt"), new[] { Sample() }, logs.Add);
+                Assert.Contains(logs, l => l.Contains("pending"));
+            }
+            finally { if (File.Exists(blocker)) File.Delete(blocker); }
         }
     }
 }
