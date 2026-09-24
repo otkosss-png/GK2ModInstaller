@@ -121,7 +121,16 @@ namespace GK2ModInstaller.Core
             if (pending.Count > 0)
                 PendingList.Write(Path.Combine(configDir, PendingFileName), pending, log);
             if (pending.Count > 0 || summary.Approved > 0 || summary.Updates > 0 || summary.Blocked > 0 || summary.Removed > 0 || migration.Count > 0)
-                trust.Save(trustPath);
+            {
+                try
+                {
+                    trust.Save(trustPath);
+                }
+                catch (Exception ex)
+                {
+                    log?.Invoke("trust: не сохранён (" + ex.Message + ") — решения этого запуска будут потеряны");
+                }
+            }
             LogAcfUpdates(options, plan, log);
             log?.Invoke(summary.ToString());
             return summary;
@@ -177,14 +186,26 @@ namespace GK2ModInstaller.Core
             }
             else
             {
-                trust.Set(new TrustEntry
+                if (entry.Kind == DecisionKind.Update && entry.Trust != null)
                 {
-                    Id = entry.Item.Id,
-                    Sha256 = entry.Fingerprint,
-                    State = TrustState.Ask,
-                    Title = entry.Item.Title,
-                    Note = "отложено " + DateTime.Now.ToString("yyyy-MM-dd")
-                });
+                    // Обновление отложено: на диске остаётся прежняя одобренная версия.
+                    // НЕ перезаписываем хеш на новый — иначе старые файлы в стейджинге
+                    // разойдутся с новым хешем в trust, и на следующем запуске миграция
+                    // (New + Staged) позволит «довериться» новому исходнику, не спросив.
+                    entry.Trust.Note = "обновление отложено " + DateTime.Now.ToString("yyyy-MM-dd");
+                    trust.Set(entry.Trust);
+                }
+                else
+                {
+                    trust.Set(new TrustEntry
+                    {
+                        Id = entry.Item.Id,
+                        Sha256 = entry.Fingerprint,
+                        State = TrustState.Ask,
+                        Title = entry.Item.Title,
+                        Note = "отложено " + DateTime.Now.ToString("yyyy-MM-dd")
+                    });
+                }
                 summary.Postponed++;
                 pending.Add(prompt);
                 log?.Invoke("Workshop: отложен мод " + entry.Item.Id);

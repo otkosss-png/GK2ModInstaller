@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using GK2ModInstaller.Core;
@@ -377,6 +378,71 @@ namespace GK2ModInstaller.Tests
                 WorkshopLoader.Run(options, new FakeDialog(), logs.Add);
 
                 Assert.Contains(logs, l => l.Contains("111") && l.Contains("ACF"));
+            }
+            finally { MakeWorkshop.SafeDelete(root); }
+        }
+
+        [Fact]
+        public void Update_later_keeps_old_approval_and_second_run_reasks_without_bulk()
+        {
+            string root = MakeWorkshop.Tmp();
+            try
+            {
+                FakeDialog dialog;
+                var options = OptionsForNewMod(root, "888", "NEW", out dialog);
+                MakeWorkshop.MakeStaged(options.BepInExRoot, "888", "OLD");
+                string trustPath = Path.Combine(options.BepInExRoot, "config", WorkshopLoader.TrustFileName);
+                var store = TrustStore.Load(trustPath, null);
+                store.Set(new TrustEntry { Id = "888", Sha256 = "старый-хеш", State = TrustState.Approved, Title = "Mod" });
+                store.Save(trustPath);
+
+                int bulkCalls = 0;
+                dialog.OnBulk = _ => { bulkCalls++; return BulkAnswer.All; };
+                dialog.OnAsk = _ => ConsentAnswer.Later;
+
+                var first = WorkshopLoader.Run(options, dialog, null);
+
+                Assert.Equal("OLD", File.ReadAllText(Path.Combine(MakeWorkshop.Staging(options.BepInExRoot, "888"), "Mod.dll")));
+                Assert.Equal(1, first.Postponed);
+                Assert.Equal(0, first.Updates);
+                Assert.Equal(0, bulkCalls);
+                var afterFirst = TrustStore.Load(trustPath, null).Get("888");
+                Assert.Equal(TrustState.Approved, afterFirst.State);
+                Assert.Equal("старый-хеш", afterFirst.Sha256);
+                Assert.Contains("отложено", afterFirst.Note ?? "");
+
+                dialog.Asked.Clear();
+                var second = WorkshopLoader.Run(options, dialog, null);
+
+                Assert.Contains("888", dialog.Asked.ToArray());
+                Assert.Equal(0, bulkCalls);
+                Assert.Equal(1, second.Postponed);
+                Assert.Equal("OLD", File.ReadAllText(Path.Combine(MakeWorkshop.Staging(options.BepInExRoot, "888"), "Mod.dll")));
+                var afterSecond = TrustStore.Load(trustPath, null).Get("888");
+                Assert.Equal(TrustState.Approved, afterSecond.State);
+                Assert.Equal("старый-хеш", afterSecond.Sha256);
+            }
+            finally { MakeWorkshop.SafeDelete(root); }
+        }
+
+        [Fact]
+        public void Unwritable_trust_file_does_not_abort_run_and_is_logged()
+        {
+            string root = MakeWorkshop.Tmp();
+            try
+            {
+                var options = Options(root);
+                Directory.CreateDirectory(options.WorkshopRoot);
+                // Путь-родитель trust-файла (BepInEx\config) — это ФАЙЛ, записать нельзя.
+                File.WriteAllText(Path.Combine(options.BepInExRoot, "config"), "not a directory");
+                MakeWorkshop.MakeStaged(options.BepInExRoot, "999", "OLD");
+
+                var logs = new List<string>();
+                var summary = WorkshopLoader.Run(options, new FakeDialog(), logs.Add);
+
+                Assert.NotNull(summary);
+                Assert.Equal(1, summary.Removed);
+                Assert.Contains(logs, l => l.Contains("trust"));
             }
             finally { MakeWorkshop.SafeDelete(root); }
         }

@@ -54,10 +54,47 @@ namespace GK2ModInstaller.Tests
                 Assert.Equal(a, ModFingerprint.Compute(dir));
 
                 Directory.CreateDirectory(Path.Combine(dir, "config"));
-                File.WriteAllText(Path.Combine(dir, "config", "notes.txt"), "user edited");
+                File.WriteAllText(Path.Combine(dir, "config", "notes.cfg"), "user edited");
                 Directory.CreateDirectory(Path.Combine(dir, "sub", "config"));
-                File.WriteAllText(Path.Combine(dir, "sub", "config", "notes.txt"), "user edited");
+                File.WriteAllText(Path.Combine(dir, "sub", "config", "notes.cfg"), "user edited");
                 Assert.Equal(a, ModFingerprint.Compute(dir));
+            }
+            finally { if (Directory.Exists(dir)) Directory.Delete(dir, true); }
+        }
+
+        [Fact]
+        public void Dll_under_config_directory_changes_fingerprint()
+        {
+            string dir = Tmp();
+            try
+            {
+                Directory.CreateDirectory(Path.Combine(dir, "config"));
+                Directory.CreateDirectory(Path.Combine(dir, "sub", "config"));
+                File.WriteAllText(Path.Combine(dir, "config", "payload.dll"), "AAA");
+                File.WriteAllText(Path.Combine(dir, "sub", "config", "payload.dll"), "AAA");
+                string a = ModFingerprint.Compute(dir);
+                Assert.Equal(64, a.Length);
+
+                File.WriteAllText(Path.Combine(dir, "config", "payload.dll"), "AAB");
+                string b = ModFingerprint.Compute(dir);
+                Assert.NotEqual(a, b);
+
+                File.WriteAllText(Path.Combine(dir, "sub", "config", "payload.dll"), "AAB");
+                Assert.NotEqual(b, ModFingerprint.Compute(dir));
+            }
+            finally { if (Directory.Exists(dir)) Directory.Delete(dir, true); }
+        }
+
+        [Fact]
+        public void Compute_on_path_that_is_a_file_returns_empty_without_throwing()
+        {
+            string dir = Tmp();
+            try
+            {
+                Directory.CreateDirectory(dir);
+                string file = Path.Combine(dir, "Mod.dll");
+                File.WriteAllText(file, "AAA");
+                Assert.Equal("", ModFingerprint.Compute(file));
             }
             finally { if (Directory.Exists(dir)) Directory.Delete(dir, true); }
         }
