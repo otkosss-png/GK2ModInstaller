@@ -129,7 +129,6 @@ namespace GK2ModInstaller.Tests
                 File.WriteAllText(path, "# мой комментарий\nмусор без разделителей\n333|hash|yes|T|\n");
                 var logs = new System.Collections.Generic.List<string>();
                 var store = TrustStore.Load(path, logs.Add);
-                Assert.Contains("# мой комментарий", File.ReadAllText(path, System.Text.Encoding.UTF8) is string ? "# мой комментарий" : "");
                 Assert.Null(store.Get("мусор без разделителей"));
                 Assert.Equal(TrustState.Approved, store.Get("333").State);
                 Assert.Contains(logs, l => l.Contains("пропущена строка"));
@@ -2156,9 +2155,10 @@ git commit -m "feat(core): WorkshopLoader applies known/blocked/removed decision
                 var options = OptionsForNewMod(root, "1000", "MOD", out dialog);
                 dialog.OnAsk = _ => ConsentAnswer.Later;
                 var logs = new System.Collections.Generic.List<string>();
-                var summary = WorkshopLoader.Run(options, dialog, logs.Add);
-                Assert.True(summary.Findings >= 0);
-                Assert.Contains(logs, l => l.Contains("Workshop:"));
+                WorkshopLoader.Run(options, dialog, logs.Add);
+                Assert.Contains(logs, l => l.StartsWith("Workshop:") && l.Contains("отложен"));
+                string pending = Path.Combine(options.BepInExRoot, "config", WorkshopLoader.PendingFileName);
+                Assert.Contains("1000", File.ReadAllText(pending));
             }
             finally { MakeWorkshop.SafeDelete(root); }
         }
