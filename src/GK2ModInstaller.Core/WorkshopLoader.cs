@@ -64,13 +64,17 @@ namespace GK2ModInstaller.Core
                 item => ScanItem(item),
                 manualAssemblies, stagedIds);
 
+            var pending = new List<ModPrompt>();
             foreach (var entry in plan)
             {
                 summary.Duplicates += entry.Duplicates != null ? entry.Duplicates.Count : 0;
                 summary.Findings += entry.Findings != null ? entry.Findings.Count : 0;
                 try
                 {
-                    ApplyKnownOrBlocked(entry, summary, stagingRoot, configDir, log);
+                    if (entry.Kind == DecisionKind.New || entry.Kind == DecisionKind.Update)
+                        ConsentAndApply(entry, stagingRoot, configDir, trust, dialog, pending, summary, log);
+                    else
+                        ApplyKnownOrBlocked(entry, summary, stagingRoot, configDir, log);
                 }
                 catch (Exception ex)
                 {
@@ -78,9 +82,85 @@ namespace GK2ModInstaller.Core
                 }
             }
 
-            if (summary.Removed > 0 || summary.Blocked > 0) trust.Save(trustPath);
+            if (pending.Count > 0)
+                PendingList.Write(Path.Combine(configDir, PendingFileName), pending, log);
+            if (pending.Count > 0 || summary.Approved > 0 || summary.Updates > 0 || summary.Blocked > 0 || summary.Removed > 0)
+                trust.Save(trustPath);
             log?.Invoke(summary.ToString());
             return summary;
+        }
+
+        // Спрашивает игрока про New/Update; ответ определяет копирование и запись в trust.
+        private static void ConsentAndApply(PlanEntry entry, string stagingRoot, string configDir,
+            TrustStore trust, IDialog dialog, List<ModPrompt> pending, LoaderSummary summary, Action<string> log)
+        {
+            var target = Path.Combine(stagingRoot, entry.Item.Id);
+            var prompt = new ModPrompt
+            {
+                Id = entry.Item.Id,
+                Title = entry.Item.Title,
+                Version = entry.Item.Version,
+                IsUpdate = entry.Kind == DecisionKind.Update,
+                Files = entry.Item.DllFiles != null ? entry.Item.DllFiles.Select(Path.GetFileName).ToList() : new List<string>(),
+                Findings = entry.Findings ?? new List<Finding>(),
+                Duplicates = entry.Duplicates ?? new List<string>()
+            };
+
+            ConsentAnswer answer = ConsentAnswer.Later;
+            try
+            {
+                if (dialog != null) answer = dialog.Ask(prompt);
+            }
+            catch (Exception ex)
+            {
+                log?.Invoke("Workshop: диалог недоступен (" + ex.Message + ") — мод отложен: " + entry.Item.Id);
+                answer = ConsentAnswer.Later;
+            }
+
+            if (answer == ConsentAnswer.Approve)
+            {
+                WorkshopSync.DeleteDir(target);
+                WorkshopSync.CopyDir(entry.Item.PluginsDir, target);
+                CopyItemConfigs(entry.Item, configDir, log);
+                trust.Set(new TrustEntry
+                {
+                    Id = entry.Item.Id,
+                    Sha256 = entry.Fingerprint,
+                    State = TrustState.Approved,
+                    Title = entry.Item.Title,
+                    Note = (entry.Kind == DecisionKind.Update ? "обновление " : "одобрено ") + DateTime.Now.ToString("yyyy-MM-dd")
+                });
+                if (entry.Kind == DecisionKind.Update) summary.Updates++; else summary.Approved++;
+                log?.Invoke("Workshop: одобрен мод " + entry.Item.Id + " (" + entry.Item.Title + ")");
+            }
+            else if (answer == ConsentAnswer.Deny)
+            {
+                WorkshopSync.DeleteDir(target);
+                trust.Set(new TrustEntry
+                {
+                    Id = entry.Item.Id,
+                    Sha256 = entry.Fingerprint,
+                    State = TrustState.Blocked,
+                    Title = entry.Item.Title,
+                    Note = "заблокирован " + DateTime.Now.ToString("yyyy-MM-dd")
+                });
+                summary.Blocked++;
+                log?.Invoke("Workshop: заблокирован мод " + entry.Item.Id);
+            }
+            else
+            {
+                trust.Set(new TrustEntry
+                {
+                    Id = entry.Item.Id,
+                    Sha256 = entry.Fingerprint,
+                    State = TrustState.Ask,
+                    Title = entry.Item.Title,
+                    Note = "отложено " + DateTime.Now.ToString("yyyy-MM-dd")
+                });
+                summary.Postponed++;
+                pending.Add(prompt);
+                log?.Invoke("Workshop: отложен мод " + entry.Item.Id);
+            }
         }
 
         private static void ApplyKnownOrBlocked(PlanEntry entry, LoaderSummary summary, string stagingRoot, string configDir, Action<string> log)

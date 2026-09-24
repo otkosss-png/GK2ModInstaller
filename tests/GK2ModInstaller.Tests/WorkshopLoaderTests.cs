@@ -130,5 +130,157 @@ namespace GK2ModInstaller.Tests
             }
             finally { MakeWorkshop.SafeDelete(root); }
         }
+
+        private static LoaderOptions OptionsForNewMod(string root, string id, string dll, out FakeDialog dialog)
+        {
+            var options = Options(root);
+            Directory.CreateDirectory(options.WorkshopRoot);
+            MakeWorkshop.Item(options.WorkshopRoot, id, dll, "mod.cfg");
+            dialog = new FakeDialog();
+            return options;
+        }
+
+        [Fact]
+        public void New_mod_approved_is_copied_and_recorded_in_trust()
+        {
+            string root = MakeWorkshop.Tmp();
+            try
+            {
+                FakeDialog dialog;
+                var options = OptionsForNewMod(root, "444", "MOD", out dialog);
+                var summary = WorkshopLoader.Run(options, dialog, null);
+
+                Assert.Equal(new[] { "444" }, dialog.Asked.ToArray());
+                Assert.True(File.Exists(Path.Combine(MakeWorkshop.Staging(options.BepInExRoot, "444"), "Mod.dll")));
+                var entry = TrustStore.Load(Path.Combine(options.BepInExRoot, "config", WorkshopLoader.TrustFileName), null).Get("444");
+                Assert.Equal(TrustState.Approved, entry.State);
+                Assert.Equal(ModFingerprint.Compute(Path.Combine(options.WorkshopRoot, "444", "BepInEx", "plugins")), entry.Sha256);
+                Assert.Equal(1, summary.Approved);
+            }
+            finally { MakeWorkshop.SafeDelete(root); }
+        }
+
+        [Fact]
+        public void New_mod_denied_is_not_copied_and_blocked_in_trust()
+        {
+            string root = MakeWorkshop.Tmp();
+            try
+            {
+                FakeDialog dialog;
+                var options = OptionsForNewMod(root, "555", "MOD", out dialog);
+                dialog.OnAsk = _ => ConsentAnswer.Deny;
+                var summary = WorkshopLoader.Run(options, dialog, null);
+
+                Assert.False(Directory.Exists(MakeWorkshop.Staging(options.BepInExRoot, "555")));
+                Assert.Equal(TrustState.Blocked,
+                    TrustStore.Load(Path.Combine(options.BepInExRoot, "config", WorkshopLoader.TrustFileName), null).Get("555").State);
+                Assert.Equal(1, summary.Blocked);
+            }
+            finally { MakeWorkshop.SafeDelete(root); }
+        }
+
+        [Fact]
+        public void New_mod_later_is_not_copied_and_goes_to_pending()
+        {
+            string root = MakeWorkshop.Tmp();
+            try
+            {
+                FakeDialog dialog;
+                var options = OptionsForNewMod(root, "666", "MOD", out dialog);
+                dialog.OnAsk = _ => ConsentAnswer.Later;
+                var summary = WorkshopLoader.Run(options, dialog, null);
+
+                Assert.False(Directory.Exists(MakeWorkshop.Staging(options.BepInExRoot, "666")));
+                string pending = Path.Combine(options.BepInExRoot, "config", WorkshopLoader.PendingFileName);
+                Assert.True(File.Exists(pending));
+                Assert.Contains("666", File.ReadAllText(pending));
+                Assert.Equal(1, summary.Postponed);
+                Assert.Equal(TrustState.Ask,
+                    TrustStore.Load(Path.Combine(options.BepInExRoot, "config", WorkshopLoader.TrustFileName), null).Get("666").State);
+            }
+            finally { MakeWorkshop.SafeDelete(root); }
+        }
+
+        [Fact]
+        public void Null_dialog_means_later_and_nothing_is_copied()
+        {
+            string root = MakeWorkshop.Tmp();
+            try
+            {
+                FakeDialog dialog;
+                var options = OptionsForNewMod(root, "777", "MOD", out dialog);
+                var summary = WorkshopLoader.Run(options, null, null);
+
+                Assert.False(Directory.Exists(MakeWorkshop.Staging(options.BepInExRoot, "777")));
+                Assert.Equal(1, summary.Postponed);
+            }
+            finally { MakeWorkshop.SafeDelete(root); }
+        }
+
+        [Fact]
+        public void Update_later_keeps_previous_approved_version_running()
+        {
+            string root = MakeWorkshop.Tmp();
+            try
+            {
+                FakeDialog dialog;
+                var options = OptionsForNewMod(root, "888", "NEW", out dialog);
+                MakeWorkshop.MakeStaged(options.BepInExRoot, "888", "OLD");
+                string trustPath = Path.Combine(options.BepInExRoot, "config", WorkshopLoader.TrustFileName);
+                var store = TrustStore.Load(trustPath, null);
+                store.Set(new TrustEntry { Id = "888", Sha256 = "старый-хеш", State = TrustState.Approved, Title = "Mod" });
+                store.Save(trustPath);
+                dialog.OnAsk = _ => ConsentAnswer.Later;
+
+                var summary = WorkshopLoader.Run(options, dialog, null);
+
+                Assert.Equal("OLD", File.ReadAllText(Path.Combine(MakeWorkshop.Staging(options.BepInExRoot, "888"), "Mod.dll")));
+                Assert.Equal(1, summary.Postponed);
+                Assert.Equal(0, summary.Updates);
+            }
+            finally { MakeWorkshop.SafeDelete(root); }
+        }
+
+        [Fact]
+        public void Update_approved_replaces_files_and_updates_hash()
+        {
+            string root = MakeWorkshop.Tmp();
+            try
+            {
+                FakeDialog dialog;
+                var options = OptionsForNewMod(root, "999", "NEW", out dialog);
+                MakeWorkshop.MakeStaged(options.BepInExRoot, "999", "OLD");
+                string trustPath = Path.Combine(options.BepInExRoot, "config", WorkshopLoader.TrustFileName);
+                var store = TrustStore.Load(trustPath, null);
+                store.Set(new TrustEntry { Id = "999", Sha256 = "старый-хеш", State = TrustState.Approved, Title = "Mod" });
+                store.Save(trustPath);
+
+                var summary = WorkshopLoader.Run(options, dialog, null);
+
+                Assert.Equal("NEW", File.ReadAllText(Path.Combine(MakeWorkshop.Staging(options.BepInExRoot, "999"), "Mod.dll")));
+                Assert.Equal(1, summary.Updates);
+                Assert.Equal(ModFingerprint.Compute(Path.Combine(options.WorkshopRoot, "999", "BepInEx", "plugins")),
+                    TrustStore.Load(trustPath, null).Get("999").Sha256);
+            }
+            finally { MakeWorkshop.SafeDelete(root); }
+        }
+
+        [Fact]
+        public void Findings_are_reported_in_log_and_summary()
+        {
+            string root = MakeWorkshop.Tmp();
+            try
+            {
+                FakeDialog dialog;
+                var options = OptionsForNewMod(root, "1000", "MOD", out dialog);
+                dialog.OnAsk = _ => ConsentAnswer.Later;
+                var logs = new System.Collections.Generic.List<string>();
+                WorkshopLoader.Run(options, dialog, logs.Add);
+                Assert.Contains(logs, l => l.StartsWith("Workshop:") && l.Contains("отложен"));
+                string pending = Path.Combine(options.BepInExRoot, "config", WorkshopLoader.PendingFileName);
+                Assert.Contains("1000", File.ReadAllText(pending));
+            }
+            finally { MakeWorkshop.SafeDelete(root); }
+        }
     }
 }
