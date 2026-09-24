@@ -6,6 +6,7 @@
     <LangVersion>9.0</LangVersion>
     <AssemblyName>GK2ModInstaller</AssemblyName>
     <RootNamespace>GK2ModInstaller.App</RootNamespace>
+    <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
   </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="..\GK2ModInstaller.Core\GK2ModInstaller.Core.csproj" />
@@ -14,5 +15,11 @@
        <Reference Include="System.Windows.Forms" /><Reference Include="System.Drawing" /> -->
   <ItemGroup>
     <PackageReference Include="Microsoft.NETFramework.ReferenceAssemblies" Version="1.0.3" PrivateAssets="all" />
+  </ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="Resources\BepInEx_win_x64_5.4.23.5.zip" LogicalName="BepInEx_win_x64_5.4.23.5.zip" />
+    <EmbeddedResource Include="Resources\GK2.Framework.zip" LogicalName="GK2.Framework.zip" />
+    <None Include="Resources\LICENSE.BepInEx.txt" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="Resources\LICENSE.GK2Framework.txt" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 </Project>

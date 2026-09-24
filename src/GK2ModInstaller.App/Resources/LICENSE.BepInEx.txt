@@ -1,0 +1,9 @@
+BepInEx 5.4.23.5 (x64)
+=====================
+
+This installer bundles the unmodified BepInEx 5.4.23.5 x64 release
+(BepInEx_win_x64_5.4.23.5.zip) and extracts it into the game folder.
+
+BepInEx is licensed under the GNU Lesser General Public License v2.0 (LGPL-2.0).
+Full license text: https://www.gnu.org/licenses/old-licenses/lgpl-2.0.txt
+Project: https://github.com/BepInEx/BepInEx
