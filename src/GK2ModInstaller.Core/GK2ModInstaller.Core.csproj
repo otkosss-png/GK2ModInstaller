@@ -4,4 +4,10 @@
     <LangVersion>9.0</LangVersion>
     <Nullable>disable</Nullable>
   </PropertyGroup>
+  <PropertyGroup>
+    <GameDir Condition="'$(GameDir)' == ''">E:\SteamLibrary\steamapps\common\Graveyard Keeper 2</GameDir>
+  </PropertyGroup>
+  <ItemGroup>
+    <Reference Include="Mono.Cecil"><HintPath>$(GameDir)\BepInEx\core\Mono.Cecil.dll</HintPath><Private>false</Private></Reference>
+  </ItemGroup>
 </Project>
