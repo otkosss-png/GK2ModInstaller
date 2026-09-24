@@ -22,4 +22,8 @@
     <None Include="Resources\LICENSE.BepInEx.txt" CopyToOutputDirectory="PreserveNewest" />
     <None Include="Resources\LICENSE.GK2Framework.txt" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
+  <Target Name="BuildAndCopyPatcher" AfterTargets="Build">
+    <MSBuild Projects="..\GK2ModInstaller.Patcher\GK2ModInstaller.Patcher.csproj" Targets="Build" Properties="Configuration=$(Configuration)" />
+    <Copy SourceFiles="..\GK2ModInstaller.Patcher\bin\$(Configuration)\GK2.WorkshopAutoLoader.dll" DestinationFolder="$(OutputPath)" SkipUnchangedFiles="true" />
+  </Target>
 </Project>

@@ -27,14 +27,20 @@ namespace GK2ModInstaller.App
 
             using (var bep = Open("BepInEx_win_x64_5.4.23.5.zip"))
             using (var fw = Open("GK2.Framework.zip"))
-                BepInExInstaller.Install(gameDir, bep, fw, false, log);
+            using (var patcher = Open("GK2.WorkshopAutoLoader.dll"))
+                BepInExInstaller.Install(gameDir, bep, fw, patcher, false, log);
 
-            var problems = BepInExInstaller.Verify(gameDir);
+            var problems = BepInExInstaller.Verify(gameDir, true);
             foreach (var p in problems) log("Проблема: " + p);
             if (problems.Count == 0) log("OK: установлено в " + gameDir);
         }
 
         private static Stream Open(string name)
-            => Assembly.GetExecutingAssembly().GetManifestResourceStream(name);
+        {
+            var s = Assembly.GetExecutingAssembly().GetManifestResourceStream(name);
+            if (s != null) return s;
+            var path = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, name);
+            return File.Exists(path) ? File.OpenRead(path) : null;
+        }
     }
 }

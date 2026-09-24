@@ -14,6 +14,7 @@ namespace GK2ModInstaller.App
         private readonly CheckBox _bepinex = new CheckBox { Text = "BepInEx 5.4.23.5", Checked = true, AutoSize = true };
         private readonly CheckBox _framework = new CheckBox { Text = "GK2 Mod Framework", Checked = true, AutoSize = true };
         private readonly CheckBox _backup = new CheckBox { Text = "Бэкап существующего BepInEx", AutoSize = true };
+        private readonly CheckBox _autoLoader = new CheckBox { Text = "Автозагрузка Workshop-модов", Checked = true, AutoSize = true };
         private readonly TextBox _log = new TextBox { Multiline = true, ScrollBars = ScrollBars.Vertical, ReadOnly = true, Height = 160, Width = 520 };
         private readonly ProgressBar _progress = new ProgressBar { Style = ProgressBarStyle.Marquee, Visible = false, Width = 520 };
 
@@ -35,7 +36,7 @@ namespace GK2ModInstaller.App
             var row = new FlowLayoutPanel { AutoSize = true };
             row.Controls.AddRange(new Control[] { _gameDir, browse, _status });
             var checks = new FlowLayoutPanel { AutoSize = true };
-            checks.Controls.AddRange(new Control[] { _bepinex, _framework, _backup });
+            checks.Controls.AddRange(new Control[] { _bepinex, _framework, _autoLoader, _backup });
             var buttons = new FlowLayoutPanel { AutoSize = true };
             buttons.Controls.AddRange(new Control[] { install, uninstall });
 
@@ -84,7 +85,12 @@ namespace GK2ModInstaller.App
         }
 
         private Stream OpenResource(string logicalName)
-            => Assembly.GetExecutingAssembly().GetManifestResourceStream(logicalName);
+        {
+            var s = Assembly.GetExecutingAssembly().GetManifestResourceStream(logicalName);
+            if (s != null) return s;
+            var path = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, logicalName);
+            return File.Exists(path) ? File.OpenRead(path) : null;
+        }
 
         private void DoInstall()
         {
@@ -97,8 +103,9 @@ namespace GK2ModInstaller.App
                 _progress.Visible = true; AppendLog("Установка…");
                 using (var bep = _bepinex.Checked ? OpenResource("BepInEx_win_x64_5.4.23.5.zip") : null)
                 using (var fw = _framework.Checked ? OpenResource("GK2.Framework.zip") : null)
-                    BepInExInstaller.Install(dir, bep, fw, _backup.Checked, AppendLog);
-                var problems = BepInExInstaller.Verify(dir);
+                using (var patcher = _autoLoader.Checked ? OpenResource("GK2.WorkshopAutoLoader.dll") : null)
+                    BepInExInstaller.Install(dir, bep, fw, patcher, _backup.Checked, AppendLog);
+                var problems = BepInExInstaller.Verify(dir, _autoLoader.Checked);
                 AppendLog(problems.Count == 0 ? "Готово. Запустите игру 1 раз — появится меню Mods." : "Проблемы: " + string.Join(", ", problems));
             }
             catch (Exception ex) { AppendLog("Ошибка: " + ex.Message); }

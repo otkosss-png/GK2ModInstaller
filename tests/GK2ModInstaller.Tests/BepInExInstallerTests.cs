@@ -52,7 +52,7 @@ namespace GK2ModInstaller.Tests
             {
                 using (var bep = Zip(("winhttp.dll", "x"), ("doorstop_config.ini", "x"), ("BepInEx/core/BepInEx.dll", "x")))
                 using (var fw = Zip(("BepInEx/plugins/GK2.Framework.dll", "x")))
-                    BepInExInstaller.Install(dir, bep, fw, false, null);
+                    BepInExInstaller.Install(dir, bep, fw, null, false, null);
                 Assert.Empty(BepInExInstaller.Verify(dir));
             }
             finally { Directory.Delete(dir, true); }

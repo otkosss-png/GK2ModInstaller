@@ -19,7 +19,7 @@ namespace GK2ModInstaller.Core
             catch { return false; }
         }
 
-        public static IReadOnlyList<string> Verify(string gameDir)
+        public static IReadOnlyList<string> Verify(string gameDir, bool expectPatcher = false)
         {
             var problems = new List<string>();
             if (string.IsNullOrWhiteSpace(gameDir) || !Directory.Exists(gameDir))
@@ -33,10 +33,12 @@ namespace GK2ModInstaller.Core
             if (!Directory.Exists(core) || Directory.GetFiles(core).Length == 0) problems.Add("пусто BepInEx/core");
             if (!File.Exists(Path.Combine(gameDir, BepInExDirName, "plugins", "GK2.Framework.dll")))
                 problems.Add("нет GK2.Framework.dll");
+            if (expectPatcher && !File.Exists(Path.Combine(gameDir, BepInExDirName, "patchers", "GK2.WorkshopAutoLoader.dll")))
+                problems.Add("нет GK2.WorkshopAutoLoader.dll");
             return problems;
         }
 
-        public static void Install(string gameDir, Stream bepinexZip, Stream frameworkZip, bool backupExisting, Action<string> log)
+        public static void Install(string gameDir, Stream bepinexZip, Stream frameworkZip, Stream patcherDll, bool backupExisting, Action<string> log)
         {
             if (string.IsNullOrWhiteSpace(gameDir) || !Directory.Exists(gameDir))
                 throw new DirectoryNotFoundException(gameDir);
@@ -62,10 +64,20 @@ namespace GK2ModInstaller.Core
                 log?.Invoke("Распаковка GK2 Mod Framework…");
                 ZipExtractor.ExtractTo(frameworkZip, gameDir);
             }
+            if (patcherDll != null)
+            {
+                var patchersDir = Path.Combine(gameDir, BepInExDirName, "patchers");
+                Directory.CreateDirectory(patchersDir);
+                var dst = Path.Combine(patchersDir, "GK2.WorkshopAutoLoader.dll");
+                log?.Invoke("Патчер автозагрузки -> " + dst);
+                using (var fs = File.Create(dst)) patcherDll.CopyTo(fs);
+            }
         }
 
         public static void Uninstall(string gameDir, Action<string> log)
         {
+            var patcher = Path.Combine(gameDir, BepInExDirName, "patchers", "GK2.WorkshopAutoLoader.dll");
+            if (File.Exists(patcher)) { File.Delete(patcher); log?.Invoke("Удалено: patchers\\GK2.WorkshopAutoLoader.dll"); }
             var bep = Path.Combine(gameDir, BepInExDirName);
             if (Directory.Exists(bep)) { Directory.Delete(bep, true); log?.Invoke("Удалено: BepInEx\\"); }
             foreach (var f in BepInExRootFiles)
