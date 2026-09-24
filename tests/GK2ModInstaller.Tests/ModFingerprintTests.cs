@@ -52,6 +52,12 @@ namespace GK2ModInstaller.Tests
                 string a = ModFingerprint.Compute(dir);
                 File.WriteAllText(Path.Combine(dir, "settings.cfg"), "user edited");
                 Assert.Equal(a, ModFingerprint.Compute(dir));
+
+                Directory.CreateDirectory(Path.Combine(dir, "config"));
+                File.WriteAllText(Path.Combine(dir, "config", "notes.txt"), "user edited");
+                Directory.CreateDirectory(Path.Combine(dir, "sub", "config"));
+                File.WriteAllText(Path.Combine(dir, "sub", "config", "notes.txt"), "user edited");
+                Assert.Equal(a, ModFingerprint.Compute(dir));
             }
             finally { if (Directory.Exists(dir)) Directory.Delete(dir, true); }
         }

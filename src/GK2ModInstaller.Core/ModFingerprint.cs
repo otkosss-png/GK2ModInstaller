@@ -18,7 +18,7 @@ namespace GK2ModInstaller.Core
             {
                 var rel = full.Substring(pluginsDir.Length).TrimStart('\\', '/').Replace('\\', '/').ToLowerInvariant();
                 if (rel.EndsWith(".cfg", StringComparison.OrdinalIgnoreCase)) continue;
-                if (rel.Contains("/config/")) continue;
+                if (rel == "config" || rel.StartsWith("config/", StringComparison.Ordinal) || rel.Contains("/config/")) continue;
                 files.Add(new KeyValuePair<string, string>(rel, full));
             }
             files.Sort((a, b) => string.CompareOrdinal(a.Key, b.Key));
