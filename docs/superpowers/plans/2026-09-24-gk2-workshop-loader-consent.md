@@ -1942,7 +1942,7 @@ namespace GK2ModInstaller.Core
                 summary.Findings += entry.Findings != null ? entry.Findings.Count : 0;
                 try
                 {
-                    ApplyKnownOrBlocked(entry, stagingRoot, configDir, log);
+                    ApplyKnownOrBlocked(entry, stagingRoot, configDir, summary, log);
                 }
                 catch (Exception ex)
                 {
@@ -1955,7 +1955,7 @@ namespace GK2ModInstaller.Core
             return summary;
         }
 
-        private static void ApplyKnownOrBlocked(PlanEntry entry, string stagingRoot, string configDir, Action<string> log)
+        private static void ApplyKnownOrBlocked(PlanEntry entry, string stagingRoot, string configDir, LoaderSummary summary, Action<string> log)
         {
             var target = Path.Combine(stagingRoot, entry.Item.Id);
             switch (entry.Kind)
@@ -1971,10 +1971,12 @@ namespace GK2ModInstaller.Core
                     break;
                 case DecisionKind.Blocked:
                     WorkshopSync.DeleteDir(target);
+                    summary.Blocked++;
                     log?.Invoke("Workshop: заблокированный мод не грузим — " + entry.Item.Id);
                     break;
                 case DecisionKind.Removed:
                     WorkshopSync.DeleteDir(target);
+                    summary.Removed++;
                     log?.Invoke("Workshop: мод отписан, копия удалена — " + entry.Item.Id);
                     break;
                 default:
