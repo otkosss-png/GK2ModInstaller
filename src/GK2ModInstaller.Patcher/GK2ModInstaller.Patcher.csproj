@@ -8,8 +8,17 @@
     <GameDir Condition="'$(GameDir)' == ''">E:\SteamLibrary\steamapps\common\Graveyard Keeper 2</GameDir>
   </PropertyGroup>
   <ItemGroup>
-    <!-- Компилируем WorkshopSync прямо в патчер, чтобы не тащить Core.dll в BepInEx/patchers -->
+    <!-- Компилируем Core-файлы прямо в патчер, чтобы не тащить Core.dll в BepInEx/patchers -->
     <Compile Include="..\GK2ModInstaller.Core\WorkshopSync.cs" Link="WorkshopSync.cs" />
+    <Compile Include="..\GK2ModInstaller.Core\WorkshopLoader.cs" Link="WorkshopLoader.cs" />
+    <Compile Include="..\GK2ModInstaller.Core\WorkshopItems.cs" Link="WorkshopItems.cs" />
+    <Compile Include="..\GK2ModInstaller.Core\TrustStore.cs" Link="TrustStore.cs" />
+    <Compile Include="..\GK2ModInstaller.Core\ModFingerprint.cs" Link="ModFingerprint.cs" />
+    <Compile Include="..\GK2ModInstaller.Core\CodeScan.cs" Link="CodeScan.cs" />
+    <Compile Include="..\GK2ModInstaller.Core\ConsentPlanner.cs" Link="ConsentPlanner.cs" />
+    <Compile Include="..\GK2ModInstaller.Core\AcfTimes.cs" Link="AcfTimes.cs" />
+    <Compile Include="..\GK2ModInstaller.Core\LoaderDialog.cs" Link="LoaderDialog.cs" />
+    <Compile Include="..\GK2ModInstaller.Core\PendingList.cs" Link="PendingList.cs" />
   </ItemGroup>
   <ItemGroup>
     <Reference Include="BepInEx"><HintPath>$(GameDir)\BepInEx\core\BepInEx.dll</HintPath><Private>false</Private></Reference>

@@ -15,21 +15,31 @@ namespace GK2ModInstaller.Patcher
 
         public static void Patch(AssemblyDefinition assembly)
         {
-            var log = Logger.CreateLogSource("GK2.WorkshopAutoLoader");
+            var log = Logger.CreateLogSource("GK2.WorkshopLoader");
             string bep = Paths.BepInExRootPath;
-            string gameDir = Directory.GetParent(bep)?.FullName;
-            string workshop = FindWorkshopRoot(gameDir);
+            string steamapps = FindSteamAppsRoot(Directory.GetParent(bep)?.FullName);
+            string workshop = steamapps == null ? null : Path.Combine(steamapps, "workshop", "content", WorkshopId);
+            string acf = steamapps == null ? null : Path.Combine(steamapps, "workshop", "appworkshop_" + WorkshopId + ".acf");
             log.LogInfo("Workshop root: " + (workshop ?? "<не найден>"));
-            WorkshopSync.RunOnce(workshop, bep, log.LogInfo);
+
+            var options = new LoaderOptions { WorkshopRoot = workshop, WorkshopAcfPath = acf, BepInExRoot = bep };
+            try
+            {
+                WorkshopLoader.Run(options, new Win32Dialog(), log.LogInfo);
+            }
+            catch (System.Exception ex)
+            {
+                log.LogError("Автозагрузка Workshop упала: " + ex);
+            }
         }
 
-        private static string FindWorkshopRoot(string gameDir)
+        private static string FindSteamAppsRoot(string gameDir)
         {
             if (string.IsNullOrEmpty(gameDir)) return null;
             var dir = new DirectoryInfo(gameDir);
             while (dir != null && !dir.Name.Equals("steamapps", System.StringComparison.OrdinalIgnoreCase))
                 dir = dir.Parent;
-            return dir == null ? null : Path.Combine(dir.FullName, "workshop", "content", WorkshopId);
+            return dir == null ? null : dir.FullName;
         }
     }
 }
