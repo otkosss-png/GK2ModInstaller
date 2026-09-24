@@ -111,11 +111,13 @@ public static class CodeScan { public static IReadOnlyList<Finding> Scan(string 
 
 ### 4.5 `ConsentPlan` (Core)
 ```csharp
-public enum DecisionKind { New, Update, Known, Removed }
+public enum DecisionKind { New, Update, Known, Blocked, Removed }
 public sealed class PlanEntry {
     public DecisionKind Kind;
     public WorkshopItem Item;
     public TrustEntry Trust;                       // null для New
+    public string Fingerprint;                     // отпечаток текущих файлов айтема
+    public bool Staged;                            // файлы уже лежат в _Workshop\<id>
     public IReadOnlyList<Finding> Findings;        // из CodeScan
     public IReadOnlyList<string> Duplicates;       // имена сборок, найденных и вручную
 }
@@ -124,12 +126,16 @@ public static class ConsentPlanner {
         IReadOnlyList<WorkshopItem> items,
         TrustStore trust,
         Func<WorkshopItem, string> fingerprint,
-        IReadOnlyList<string> manuallyInstalledAssemblies);
+        Func<WorkshopItem, IReadOnlyList<Finding>> scanFindings,
+        IReadOnlyList<string> manuallyInstalledAssemblies,
+        IReadOnlyList<string> stagedIds);
 }
 ```
-Классификация айтема: `Removed` (есть в `_Workshop`, нет в Workshop), `New` (нет строки в trust
-или `state=ask`), `Update` (trust `yes`, отпечаток другой), `Known` (trust `yes`, отпечаток
-совпал).
+Классификация айтема: `New` (нет строки в trust или `state=ask`), `Blocked` (`state=no`),
+`Update` (`yes`, отпечаток другой), `Known` (`yes`, отпечаток совпал); `Removed` — для id,
+которые есть в `_Workshop` (`stagedIds`), но пропали из Workshop.
+`scanFindings` вызывается **только** для `New`/`Update` (не сканируем уже одобренное на
+каждом старте). `Staged` = id есть в `stagedIds` (нужно для миграции).
 
 `Duplicate` — **не вид решения, а список** имён сборок, которые есть и в айтеме, и в ручной
 установке: `manuallyInstalledAssemblies` = имена сборок (`AssemblyDefinition.Name.Name`) всех
@@ -176,9 +182,10 @@ public interface IDialog {
    отдельности; `Cancel` → оставить как есть (не трогаем, работает) и спросить снова.
 5. Для каждого `New`/`Update` (кроме выданных сводным `Yes`) — диалог: `Approve` → `yes`,
    `Deny` → `no` + удалить `_Workshop\<id>`, `Later` → `ask`, файлы не трогаем.
-6. Применить: `Known` — ничего (уже скопировано), `Approve` — копировать `BepInEx\plugins\**`
-   в `_Workshop\<id>` (+ `config\*.cfg` только если файла нет), `Removed`/`Deny` — удалить
-   `_Workshop\<id>`.
+6. Применить: `Known` — ничего, если копия уже есть; если копии нет (её удалили вручную) —
+   восстановить из Workshop; `Approved` — копировать `BepInEx\plugins\**` в `_Workshop\<id>`
+   (+ `config\*.cfg` только если файла нет), `Removed` — удалить `_Workshop\<id>`;
+   `Blocked` (`no`) — молча удалить `_Workshop\<id>`, не спрашивая.
 7. `TrustStore.Save` (если менялся), `appworkshop_4358690.acf` → лог «доступно обновление»
    для айтемов, где `timeupdated` новее trust-записи, но файлы совпали (справочно).
 8. Сводка в `LogOutput.log`: сколько айтемов, сколько одобрено/заблокировано/отложено,
@@ -201,8 +208,9 @@ public interface IDialog {
 - Workshop-айтем патчера **3807406994**: обновить `BepInEx\patchers\GK2.WorkshopAutoLoader.dll`,
   `README.txt`, описание (RU+EN) — через `GK2Publisher --update 3807406994 --folder ... --desc-file ...`.
 - `BepInExInstaller.Verify`/`Uninstall` — без изменений (тот же путь патчера).
-- CLI инсталлятора: добавить `--reset-trust` (удалить trust-файл) — необязательно, но полезно
-  для отладки. Совместимость: старый `--install` работает как раньше.
+- Сброс решений — **вручную**: удалить `BepInEx\config\GK2_WorkshopLoader.trust.txt` (или строку
+  конкретного мода). Отдельная CLI-команда не делается. Совместимость: старый `--install`
+  работает как раньше.
 
 ## 7. Тестирование
 
