@@ -4,7 +4,7 @@ using System.Runtime.InteropServices;
 using System.Text;
 using GK2ModInstaller.Core;
 
-namespace GK2ModInstaller.Patcher
+namespace GK2ModInstaller.Loader
 {
     // Диалог через user32.MessageBoxW: WinForms в игре нет, а P/Invoke работает.
     public sealed class Win32Dialog : IDialog

@@ -11,11 +11,13 @@
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\src\GK2ModInstaller.Core\GK2ModInstaller.Core.csproj" />
+    <ProjectReference Include="..\..\src\GK2ModInstaller.Loader\GK2ModInstaller.Loader.csproj" Aliases="LoaderContract" />
   </ItemGroup>
   <PropertyGroup>
     <GameDir Condition="'$(GameDir)' == ''">E:\SteamLibrary\steamapps\common\Graveyard Keeper 2</GameDir>
   </PropertyGroup>
   <ItemGroup>
     <Reference Include="Mono.Cecil"><HintPath>$(GameDir)\BepInEx\core\Mono.Cecil.dll</HintPath><Private>true</Private></Reference>
+    <Reference Include="BepInEx"><HintPath>$(GameDir)\BepInEx\core\BepInEx.dll</HintPath><Private>true</Private></Reference>
   </ItemGroup>
 </Project>

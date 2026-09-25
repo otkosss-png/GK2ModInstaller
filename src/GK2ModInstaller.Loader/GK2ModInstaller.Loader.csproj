@@ -1,0 +1,30 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>netstandard2.0</TargetFramework>
+    <LangVersion>9.0</LangVersion>
+    <AssemblyName>GK2.WorkshopLoader</AssemblyName>
+    <RootNamespace>GK2ModInstaller.Loader</RootNamespace>
+    <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+    <Version>1.3.0</Version>
+    <GameDir Condition="'$(GameDir)' == ''">E:\SteamLibrary\steamapps\common\Graveyard Keeper 2</GameDir>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="..\GK2ModInstaller.Core\WorkshopSync.cs" Link="Core\WorkshopSync.cs" />
+    <Compile Include="..\GK2ModInstaller.Core\WorkshopLoader.cs" Link="Core\WorkshopLoader.cs" />
+    <Compile Include="..\GK2ModInstaller.Core\WorkshopItems.cs" Link="Core\WorkshopItems.cs" />
+    <Compile Include="..\GK2ModInstaller.Core\TrustStore.cs" Link="Core\TrustStore.cs" />
+    <Compile Include="..\GK2ModInstaller.Core\ModFingerprint.cs" Link="Core\ModFingerprint.cs" />
+    <Compile Include="..\GK2ModInstaller.Core\CodeScan.cs" Link="Core\CodeScan.cs" />
+    <Compile Include="..\GK2ModInstaller.Core\ConsentPlanner.cs" Link="Core\ConsentPlanner.cs" />
+    <Compile Include="..\GK2ModInstaller.Core\AcfTimes.cs" Link="Core\AcfTimes.cs" />
+    <Compile Include="..\GK2ModInstaller.Core\LoaderDialog.cs" Link="Core\LoaderDialog.cs" />
+    <Compile Include="..\GK2ModInstaller.Core\PendingList.cs" Link="Core\PendingList.cs" />
+    <Compile Include="..\GK2ModInstaller.Core\GameFolderInstaller.cs" Link="Core\GameFolderInstaller.cs" />
+    <Compile Include="..\GK2ModInstaller.Core\LoaderText.cs" Link="Core\LoaderText.cs" />
+    <Compile Include="..\GK2ModInstaller.Core\LoaderConfig.cs" Link="Core\LoaderConfig.cs" />
+  </ItemGroup>
+  <ItemGroup>
+    <Reference Include="BepInEx"><HintPath>$(GameDir)\BepInEx\core\BepInEx.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="Mono.Cecil"><HintPath>$(GameDir)\BepInEx\core\Mono.Cecil.dll</HintPath><Private>false</Private></Reference>
+  </ItemGroup>
+</Project>
