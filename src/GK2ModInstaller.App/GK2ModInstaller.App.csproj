@@ -24,6 +24,8 @@
   </ItemGroup>
   <Target Name="BuildAndCopyPatcher" AfterTargets="Build">
     <MSBuild Projects="..\GK2ModInstaller.Patcher\GK2ModInstaller.Patcher.csproj" Targets="Build" Properties="Configuration=$(Configuration)" />
+    <MSBuild Projects="..\GK2ModInstaller.Loader\GK2ModInstaller.Loader.csproj" Targets="Build" Properties="Configuration=$(Configuration)" />
     <Copy SourceFiles="..\GK2ModInstaller.Patcher\bin\$(Configuration)\GK2.WorkshopAutoLoader.dll" DestinationFolder="$(OutputPath)" SkipUnchangedFiles="true" />
+    <Copy SourceFiles="..\GK2ModInstaller.Loader\bin\$(Configuration)\GK2.WorkshopLoader.dll" DestinationFolder="$(OutputPath)" SkipUnchangedFiles="true" />
   </Target>
 </Project>

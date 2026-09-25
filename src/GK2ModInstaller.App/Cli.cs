@@ -28,7 +28,8 @@ namespace GK2ModInstaller.App
             using (var bep = Open("BepInEx_win_x64_5.4.23.5.zip"))
             using (var fw = Open("GK2.Framework.zip"))
             using (var patcher = Open("GK2.WorkshopAutoLoader.dll"))
-                BepInExInstaller.Install(gameDir, bep, fw, patcher, false, log);
+            using (var loader = Open("GK2.WorkshopLoader.dll"))
+                BepInExInstaller.Install(gameDir, bep, fw, patcher, loader, false, log);
 
             var problems = BepInExInstaller.Verify(gameDir, true);
             foreach (var p in problems) log("Проблема: " + p);

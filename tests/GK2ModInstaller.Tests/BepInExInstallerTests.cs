@@ -52,7 +52,7 @@ namespace GK2ModInstaller.Tests
             {
                 using (var bep = Zip(("winhttp.dll", "x"), ("doorstop_config.ini", "x"), ("BepInEx/core/BepInEx.dll", "x")))
                 using (var fw = Zip(("BepInEx/plugins/GK2.Framework.dll", "x")))
-                    BepInExInstaller.Install(dir, bep, fw, null, false, null);
+                    BepInExInstaller.Install(dir, bep, fw, null, null, false, null);
                 Assert.Empty(BepInExInstaller.Verify(dir));
             }
             finally { Directory.Delete(dir, true); }
@@ -74,6 +74,62 @@ namespace GK2ModInstaller.Tests
                 Assert.False(File.Exists(Path.Combine(dir, "winhttp.dll")));
                 Assert.False(File.Exists(Path.Combine(dir, "doorstop_config.ini")));
                 Assert.True(File.Exists(Path.Combine(dir, "GameFile.txt")));
+            }
+            finally { Directory.Delete(dir, true); }
+        }
+
+        [Fact]
+        public void Install_writes_loader_fallback_next_to_bepinex()
+        {
+            string dir = Path.Combine(Path.GetTempPath(), "gk2inst_" + Guid.NewGuid().ToString("N"));
+            Directory.CreateDirectory(dir);
+            try
+            {
+                var bep = Zip(("BepInEx/core/BepInEx.dll", "x"), ("winhttp.dll", "x"));
+                var fw = Zip(("BepInEx/plugins/GK2.Framework/GK2.Framework.dll", "x"));
+                using (var patcher = new MemoryStream(new byte[] { 1 }))
+                using (var loader = new MemoryStream(new byte[] { 2, 3 }))
+                    BepInExInstaller.Install(dir, bep, fw, patcher, loader, false, null);
+
+                var loaderPath = Path.Combine(dir, "BepInEx", "GK2.WorkshopLoader.dll");
+                Assert.True(File.Exists(loaderPath));
+                Assert.Equal(new byte[] { 2, 3 }, File.ReadAllBytes(loaderPath));
+                Assert.True(File.Exists(Path.Combine(dir, "BepInEx", "patchers", "GK2.WorkshopAutoLoader.dll")));
+            }
+            finally { Directory.Delete(dir, true); }
+        }
+
+        [Fact]
+        public void Verify_reports_missing_loader_fallback()
+        {
+            string dir = Path.Combine(Path.GetTempPath(), "gk2inst_" + Guid.NewGuid().ToString("N"));
+            Directory.CreateDirectory(dir);
+            try
+            {
+                Directory.CreateDirectory(Path.Combine(dir, "BepInEx", "patchers"));
+                Directory.CreateDirectory(Path.Combine(dir, "BepInEx", "core", "BepInEx"));
+                File.WriteAllText(Path.Combine(dir, "BepInEx", "patchers", "GK2.WorkshopAutoLoader.dll"), "x");
+                File.WriteAllText(Path.Combine(dir, "winhttp.dll"), "x");
+                File.WriteAllText(Path.Combine(dir, "BepInEx", "core", "BepInEx.dll"), "x");
+                var problems = BepInExInstaller.Verify(dir, expectPatcher: true);
+                Assert.Contains(problems, p => p.Contains("GK2.WorkshopLoader.dll"));
+            }
+            finally { Directory.Delete(dir, true); }
+        }
+
+        [Fact]
+        public void Uninstall_removes_loader_fallback()
+        {
+            string dir = Path.Combine(Path.GetTempPath(), "gk2inst_" + Guid.NewGuid().ToString("N"));
+            Directory.CreateDirectory(dir);
+            try
+            {
+                Directory.CreateDirectory(Path.Combine(dir, "BepInEx", "patchers"));
+                File.WriteAllText(Path.Combine(dir, "BepInEx", "patchers", "GK2.WorkshopAutoLoader.dll"), "x");
+                File.WriteAllText(Path.Combine(dir, "BepInEx", "GK2.WorkshopLoader.dll"), "x");
+                BepInExInstaller.Uninstall(dir, null);
+                Assert.False(File.Exists(Path.Combine(dir, "BepInEx", "GK2.WorkshopLoader.dll")));
+                Assert.False(File.Exists(Path.Combine(dir, "BepInEx", "patchers", "GK2.WorkshopAutoLoader.dll")));
             }
             finally { Directory.Delete(dir, true); }
         }

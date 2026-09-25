@@ -104,7 +104,8 @@ namespace GK2ModInstaller.App
                 using (var bep = _bepinex.Checked ? OpenResource("BepInEx_win_x64_5.4.23.5.zip") : null)
                 using (var fw = _framework.Checked ? OpenResource("GK2.Framework.zip") : null)
                 using (var patcher = _autoLoader.Checked ? OpenResource("GK2.WorkshopAutoLoader.dll") : null)
-                    BepInExInstaller.Install(dir, bep, fw, patcher, _backup.Checked, AppendLog);
+                using (var loader = _autoLoader.Checked ? OpenResource("GK2.WorkshopLoader.dll") : null)
+                    BepInExInstaller.Install(dir, bep, fw, patcher, loader, _backup.Checked, AppendLog);
                 var problems = BepInExInstaller.Verify(dir, _autoLoader.Checked);
                 AppendLog(problems.Count == 0 ? "Готово. Запустите игру 1 раз — появится меню Mods." : "Проблемы: " + string.Join(", ", problems));
             }
