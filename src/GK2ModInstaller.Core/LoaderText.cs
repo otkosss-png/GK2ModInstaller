@@ -87,10 +87,8 @@ namespace GK2ModInstaller.Core
             ["BulkIntro2"] = ("They are already in BepInEx\\plugins\\_Workshop and running. Trust all of them?", "Они уже стоят в BepInEx\\plugins\\_Workshop и работают. Доверять им всем?"),
             ["BulkButtonHint"] = ("Yes — trust all · No — ask about each separately · Cancel — leave as is and ask later", "Yes — доверять всем · No — спросить про каждый отдельно · Cancel — оставить как есть и спросить позже"),
 
-            // Patcher
-            ["PatcherWorkshopRoot"] = ("Workshop root: ", "Workshop root: "),
-            ["PatcherNotDetermined"] = ("<not found>", "<не найден>"),
-            ["PatcherFailed"] = ("Workshop auto-load failed: ", "Автозагрузка Workshop упала: ")
+            // Loader startup
+            ["StartupFormat"] = ("loader {0} (source: {1})", "загрузчик {0} (источник: {1})")
         };
 
         public static IReadOnlyDictionary<string, (string En, string Ru)> All => Table;
@@ -168,8 +166,6 @@ namespace GK2ModInstaller.Core
         public static string BulkIntroFormat => Get(nameof(BulkIntroFormat));
         public static string BulkIntro2 => Get(nameof(BulkIntro2));
         public static string BulkButtonHint => Get(nameof(BulkButtonHint));
-        public static string PatcherWorkshopRoot => Get(nameof(PatcherWorkshopRoot));
-        public static string PatcherNotDetermined => Get(nameof(PatcherNotDetermined));
-        public static string PatcherFailed => Get(nameof(PatcherFailed));
+        public static string StartupFormat => Get(nameof(StartupFormat));
     }
 }
