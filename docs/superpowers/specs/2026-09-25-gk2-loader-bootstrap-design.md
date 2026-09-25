@@ -87,6 +87,10 @@ namespace GK2ModInstaller.Loader
         public static void Run(string bepInExRoot, string gameRoot, string workshopRoot, string acfPath, string source)
         {
             var log = BepInEx.Logging.Logger.CreateLogSource("GK2.WorkshopLoader");
+            LoaderText.Language = LoaderConfig.Resolve(         // язык: конфиг + система (иначе RU-юзеры получат EN)
+                Path.Combine(bepInExRoot, "config", LoaderConfig.FileName),
+                LoaderText.DetectFor(System.Globalization.CultureInfo.CurrentUICulture?.TwoLetterISOLanguageName) == LoaderLanguage.Ru,
+                log.LogInfo);
             log.LogInfo($"загрузчик {typeof(Entry).Assembly.GetName().Version} (источник: {source})");
             WorkshopLoader.Run(new LoaderOptions { WorkshopRoot = workshopRoot, WorkshopAcfPath = acfPath, BepInExRoot = bepInExRoot },
                                new Win32Dialog(), log.LogInfo);
