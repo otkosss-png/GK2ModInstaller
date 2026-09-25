@@ -10,6 +10,11 @@
 - **Автозагрузка Workshop-модов:** патчер `GK2.WorkshopAutoLoader` сам подхватывает код-моды из
   подписанных Steam Workshop-айтемов (раскладывает их в `BepInEx\plugins\_Workshop\`) — без
   ручного копирования. Можно отключить галочкой в установщике.
+- **Авто-обновление загрузчика (v1.3.0):** в `BepInEx\patchers` лежит крошечная замороженная
+  заглушка — настоящий загрузчик она берёт прямо из Workshop-айтема при каждом запуске. Новые
+  версии (диалоги, языки, проверки) приезжают подпиской; после разовой установки копировать
+  ничего не нужно. Моды «в папку игры» с v1.3.0 грузятся в процесс из айтема (в `Managed` их код
+  не копируется), а отложенные операции из `pendinggame.txt` применяет установщик.
 - **Согласие на моды (v1.2.0):** ничего не запускается без вашего подтверждения — диалог
   Yes/No/Cancel для новых модов и обновлений, предупреждения код-чека и дубликатов.
 - **Моды в папку игры (v1.2.0):** если в айтеме лежит `CopyToGameFolder` (или `GraveyardKeeper2_Data`
@@ -85,6 +90,11 @@ One-click installer for **Graveyard Keeper 2** mods: installs **BepInEx 5.4.23.5
 - **Workshop mod auto-loading:** the `GK2.WorkshopAutoLoader` patcher picks up code mods from
   subscribed Steam Workshop items automatically (stages them into `BepInEx\plugins\_Workshop\`),
   no manual copying. Can be disabled with a checkbox in the installer.
+- **Loader auto-update (v1.3.0):** the file in `BepInEx\patchers` is a tiny frozen bootstrap that
+  loads the real loader straight from the Workshop item on every launch. New versions (dialogs,
+  languages, checks) arrive with your subscription — nothing to re-copy after the one-time install.
+  Since v1.3.0 game-folder mods load in-process from the item (their code is no longer copied into
+  `Managed`), and deferred operations in `pendinggame.txt` are applied by the installer.
 - **Mod consent (v1.2.0):** nothing runs without your approval — a Yes/No/Cancel dialog for new
   mods and updates, plus code-check and duplicate warnings. Decisions live in
   `BepInEx\config\GK2_WorkshopLoader.trust.txt` (delete a line to be asked again); postponed mods
