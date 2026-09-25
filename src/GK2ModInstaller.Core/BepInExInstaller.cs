@@ -82,6 +82,62 @@ namespace GK2ModInstaller.Core
                 using (var fs = File.Create(loaderPath)) loaderDll.CopyTo(fs);
                 log?.Invoke("Загрузчик: " + Path.Combine(BepInExDirName, LoaderFileName));
             }
+
+            // Инсталлятор запускается при закрытой игре — самое время применить отложенные
+            // операции загрузчика с файлами в папке игры (legacy-копии DLL, неудавшиеся откаты).
+            ApplyPendingGameActions(gameDir, log);
+        }
+
+        // Применяет очередь из BepInEx\config\GK2_WorkshopLoader.pendinggame.txt: удаляет legacy-копии
+        // и восстанавливает файлы из бэкапов модов. Неудавшиеся (файл занят) оставляет на следующий раз.
+        // Возвращает число применённых действий. Никогда не бросает исключений.
+        public static int ApplyPendingGameActions(string gameDir, Action<string> log)
+        {
+            var applied = 0;
+            if (string.IsNullOrWhiteSpace(gameDir) || !Directory.Exists(gameDir)) return applied;
+            var pendingPath = Path.Combine(gameDir, BepInExDirName, "config", PendingGameActions.FileName);
+            var actions = PendingGameActions.Read(pendingPath, log);
+            if (actions.Count == 0) return applied;
+
+            log?.Invoke(string.Format(LoaderText.PendingGameApplyStart, actions.Count));
+            var remaining = new List<PendingGameAction>();
+            foreach (var a in actions)
+            {
+                var target = Path.Combine(gameDir, a.Rel);
+                try
+                {
+                    if (string.Equals(a.Kind, PendingGameAction.DeleteKind, StringComparison.OrdinalIgnoreCase))
+                    {
+                        // File.Delete — no-op для отсутствующего файла; на каталоге/занятом файле бросает,
+                        // и действие остаётся до следующего запуска (инсталлятор при закрытой игре).
+                        File.Delete(target);
+                        applied++;
+                        log?.Invoke(string.Format(LoaderText.PendingGameDeleted, a.Rel));
+                    }
+                    else
+                    {
+                        var backupFile = Path.Combine(gameDir, BepInExDirName, "config",
+                            GameFolderInstaller.BackupDirName, a.Id, "files", a.Rel);
+                        var targetDir = Path.GetDirectoryName(target);
+                        if (!string.IsNullOrEmpty(targetDir)) Directory.CreateDirectory(targetDir);
+                        if (File.Exists(backupFile)) File.Copy(backupFile, target, true);
+                        else File.Delete(target);
+                        applied++;
+                        log?.Invoke(string.Format(LoaderText.PendingGameRestored, a.Rel, a.Id));
+                    }
+                }
+                catch (Exception ex)
+                {
+                    remaining.Add(a);
+                    var format = string.Equals(a.Kind, PendingGameAction.DeleteKind, StringComparison.OrdinalIgnoreCase)
+                        ? LoaderText.PendingGameDeleteFailed
+                        : LoaderText.PendingGameRestoreFailed;
+                    log?.Invoke(string.Format(format, a.Rel) + " (" + ex.Message + ")");
+                }
+            }
+            PendingGameActions.Write(pendingPath, remaining, log);
+            log?.Invoke(string.Format(LoaderText.PendingGameDone, applied, remaining.Count));
+            return applied;
         }
 
         public static void Uninstall(string gameDir, Action<string> log)

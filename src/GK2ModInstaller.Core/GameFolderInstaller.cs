@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Text;
 
@@ -179,6 +180,28 @@ namespace GK2ModInstaller.Core
                 catch (Exception ex) { log?.Invoke("game-folder: бэкап не удалён (" + ex.Message + ")"); }
             }
             return restored;
+        }
+
+        // Относительные пути всех файлов из манифеста бэкапа (в порядке записи). Нужно, чтобы
+        // поставить отложенный откат, когда обычный не прошёл (файлы заняты игрой). См. §10 спеки.
+        public static IReadOnlyList<string> ManifestRelativePaths(string backupRoot)
+        {
+            var list = new List<string>();
+            try
+            {
+                var manifestPath = Path.Combine(backupRoot, ManifestFileName);
+                if (string.IsNullOrEmpty(backupRoot) || !File.Exists(manifestPath)) return list;
+                foreach (var raw in File.ReadAllLines(manifestPath))
+                {
+                    var line = raw.Trim();
+                    if (line.Length == 0 || line.StartsWith("#", StringComparison.Ordinal)) continue;
+                    var parts = line.Split('|');
+                    if (parts.Length < 1 || parts[0].Length == 0) continue;
+                    list.Add(parts[0]);
+                }
+            }
+            catch { }
+            return list;
         }
 
         // Удаляет осиротевшие пустые папки вверх до (не включая) папки игры.

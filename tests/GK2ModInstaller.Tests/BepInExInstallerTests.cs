@@ -133,5 +133,72 @@ namespace GK2ModInstaller.Tests
             }
             finally { Directory.Delete(dir, true); }
         }
+
+        [Fact]
+        public void ApplyPendingGameActions_deletes_and_restores_and_clears()
+        {
+            string dir = Path.Combine(Path.GetTempPath(), "gk2pg_" + Guid.NewGuid().ToString("N"));
+            Directory.CreateDirectory(dir);
+            try
+            {
+                var config = Path.Combine(dir, "BepInEx", "config");
+                Directory.CreateDirectory(config);
+
+                var legacy = Path.Combine(dir, "GraveyardKeeper2_Data", "Managed", "Old.dll");
+                Directory.CreateDirectory(Path.GetDirectoryName(legacy));
+                File.WriteAllText(legacy, "LEGACY");
+
+                var backupFile = Path.Combine(config, "GK2_WorkshopLoader.backup", "9", "files", "Languages", "l", "language.json");
+                Directory.CreateDirectory(Path.GetDirectoryName(backupFile));
+                File.WriteAllText(backupFile, "ORIG");
+                var gameLang = Path.Combine(dir, "Languages", "l", "language.json");
+                Directory.CreateDirectory(Path.GetDirectoryName(gameLang));
+                File.WriteAllText(gameLang, "NEW");
+
+                var pending = Path.Combine(config, PendingGameActions.FileName);
+                PendingGameActions.Write(pending, new[]
+                {
+                    new PendingGameAction { Kind = PendingGameAction.DeleteKind, Rel = @"GraveyardKeeper2_Data\Managed\Old.dll" },
+                    new PendingGameAction { Kind = PendingGameAction.RestoreKind, Rel = @"Languages\l\language.json", Id = "9" }
+                }, null);
+
+                int n = BepInExInstaller.ApplyPendingGameActions(dir, null);
+
+                Assert.Equal(2, n);
+                Assert.False(File.Exists(legacy));
+                Assert.Equal("ORIG", File.ReadAllText(gameLang));
+                Assert.False(File.Exists(pending));
+            }
+            finally { Directory.Delete(dir, true); }
+        }
+
+        [Fact]
+        public void ApplyPendingGameActions_keeps_an_action_that_cannot_be_applied()
+        {
+            string dir = Path.Combine(Path.GetTempPath(), "gk2pg_" + Guid.NewGuid().ToString("N"));
+            Directory.CreateDirectory(dir);
+            try
+            {
+                var config = Path.Combine(dir, "BepInEx", "config");
+                Directory.CreateDirectory(config);
+                // Цель — каталог: File.Delete на Windows детерминированно падает, имитируя
+                // заблокированный запущенной игрой файл.
+                Directory.CreateDirectory(Path.Combine(dir, "GraveyardKeeper2_Data", "Managed", "Locked.dll"));
+
+                var pending = Path.Combine(config, PendingGameActions.FileName);
+                PendingGameActions.Write(pending, new[]
+                {
+                    new PendingGameAction { Kind = PendingGameAction.DeleteKind, Rel = @"GraveyardKeeper2_Data\Managed\Locked.dll" }
+                }, null);
+
+                int n = BepInExInstaller.ApplyPendingGameActions(dir, null);
+
+                Assert.Equal(0, n);
+                Assert.True(Directory.Exists(Path.Combine(dir, "GraveyardKeeper2_Data", "Managed", "Locked.dll")));
+                Assert.True(File.Exists(pending));
+                Assert.Contains("Locked.dll", File.ReadAllText(pending));
+            }
+            finally { Directory.Delete(dir, true); }
+        }
     }
 }

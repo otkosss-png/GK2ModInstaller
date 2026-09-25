@@ -577,5 +577,60 @@ namespace GK2ModInstaller.Tests
             }
             finally { MakeWorkshop.SafeDelete(root); }
         }
+
+        [Fact]
+        public void GameFolder_legacy_dll_copy_is_queued_for_delete()
+        {
+            string root = MakeWorkshop.Tmp();
+            try
+            {
+                var options = Options(root);
+                Directory.CreateDirectory(options.WorkshopRoot);
+                MakeWorkshop.GameFolderItem(options.WorkshopRoot, "710", @"GraveyardKeeper2_Data\Managed\Mod.dll", "DLL");
+                // Legacy-копия от прежнего загрузчика уже лежит в папке игры.
+                var legacy = Path.Combine(root, "GraveyardKeeper2_Data", "Managed", "Mod.dll");
+                Directory.CreateDirectory(Path.GetDirectoryName(legacy));
+                File.WriteAllText(legacy, "OLD");
+
+                WorkshopLoader.Run(options, new FakeDialog(), null);
+
+                var pending = Path.Combine(options.BepInExRoot, "config", PendingGameActions.FileName);
+                Assert.True(File.Exists(pending));
+                Assert.Contains(@"delete|GraveyardKeeper2_Data\Managed\Mod.dll", File.ReadAllText(pending));
+            }
+            finally { MakeWorkshop.SafeDelete(root); }
+        }
+
+        [Fact]
+        public void GameFolder_deny_with_failed_restore_queues_restore()
+        {
+            string root = MakeWorkshop.Tmp();
+            try
+            {
+                var options = Options(root);
+                Directory.CreateDirectory(options.WorkshopRoot);
+                MakeWorkshop.GameFolderItem(options.WorkshopRoot, "711", @"GraveyardKeeper2_Data\Managed\Mod.dll", "DLL");
+                var backup = MakeWorkshop.BackupDir(options.BepInExRoot, "711");
+                Directory.CreateDirectory(Path.Combine(backup, "files"));
+                File.WriteAllText(Path.Combine(backup, "files", "Mod.dll"), "ORIG");
+                // flag=1 и цель-каталог: File.Copy падает, бэкап остаётся — откат в очередь.
+                File.WriteAllText(Path.Combine(backup, "manifest.txt"), @"GraveyardKeeper2_Data\Managed\Mod.dll|1" + "\n");
+                Directory.CreateDirectory(Path.Combine(root, "GraveyardKeeper2_Data", "Managed", "Mod.dll"));
+                string trust = Path.Combine(options.BepInExRoot, "config", WorkshopLoader.TrustFileName);
+                var store = TrustStore.Load(trust, null);
+                store.Set(new TrustEntry { Id = "711", Sha256 = "x", State = TrustState.Blocked, Title = "Bad" });
+                store.Save(trust);
+
+                WorkshopLoader.Run(options, new FakeDialog(), null);
+
+                var pending = Path.Combine(options.BepInExRoot, "config", PendingGameActions.FileName);
+                Assert.True(File.Exists(pending));
+                var text = File.ReadAllText(pending);
+                Assert.Contains("restore|", text);
+                Assert.Contains(@"GraveyardKeeper2_Data\Managed\Mod.dll", text);
+                Assert.Contains("711", text);
+            }
+            finally { MakeWorkshop.SafeDelete(root); }
+        }
     }
 }

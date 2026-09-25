@@ -50,6 +50,7 @@ namespace GK2ModInstaller.Core
             var configDir = Path.Combine(options.BepInExRoot, "config");
             var stagingRoot = Path.Combine(pluginsDir, StagingDirName);
             var trustPath = Path.Combine(configDir, TrustFileName);
+            var pendingGamePath = Path.Combine(configDir, PendingGameActions.FileName);
             Directory.CreateDirectory(stagingRoot);
 
             // Папка игры — родитель BepInEx. Без неё моды в папку игры установить нельзя.
@@ -125,9 +126,9 @@ namespace GK2ModInstaller.Core
                 try
                 {
                     if (entry.Kind == DecisionKind.New || entry.Kind == DecisionKind.Update)
-                        ConsentAndApply(entry, stagingRoot, configDir, gameRoot, trust, dialog, pending, summary, log);
+                        ConsentAndApply(entry, stagingRoot, configDir, gameRoot, trust, dialog, pending, summary, pendingGamePath, log);
                     else
-                        ApplyKnownOrBlocked(entry, summary, stagingRoot, configDir, gameRoot, log);
+                        ApplyKnownOrBlocked(entry, summary, stagingRoot, configDir, gameRoot, pendingGamePath, log);
                 }
                 catch (Exception ex)
                 {
@@ -155,7 +156,7 @@ namespace GK2ModInstaller.Core
 
         // Спрашивает игрока про New/Update; ответ определяет копирование и запись в trust.
         private static void ConsentAndApply(PlanEntry entry, string stagingRoot, string configDir, string gameRoot,
-            TrustStore trust, IDialog dialog, List<ModPrompt> pending, LoaderSummary summary, Action<string> log)
+            TrustStore trust, IDialog dialog, List<ModPrompt> pending, LoaderSummary summary, string pendingGamePath, Action<string> log)
         {
             var target = Path.Combine(stagingRoot, entry.Item.Id);
             var prompt = ToPrompt(entry);
@@ -188,6 +189,9 @@ namespace GK2ModInstaller.Core
                         GameFolderDllLoader.Load(entry.Item.DllFiles, log);
                         int n = GameFolderInstaller.Install(entry.Item.SourceDir, gameRoot, backupRoot, log);
                         log?.Invoke(string.Format(LoaderText.GameFolderInstalledFiles, entry.Item.Id, n));
+                        // Legacy-копии DLL из прежней установки убрать из папки игры не выйдет
+                        // из-под игры — ставим в очередь для инсталлятора.
+                        ScheduleLegacyDllDeletes(entry.Item, gameRoot, pendingGamePath, log);
                     }
                 }
                 else
@@ -212,8 +216,11 @@ namespace GK2ModInstaller.Core
                 if (entry.Item.Kind == WorkshopItemKind.GameFolder)
                 {
                     if (!string.IsNullOrEmpty(gameRoot))
-                        GameFolderInstaller.Restore(gameRoot,
-                            Path.Combine(configDir, GameFolderInstaller.BackupDirName, entry.Item.Id), log);
+                    {
+                        var backupRoot = Path.Combine(configDir, GameFolderInstaller.BackupDirName, entry.Item.Id);
+                        GameFolderInstaller.Restore(gameRoot, backupRoot, log);
+                        ScheduleRestoresIfBackupRemains(backupRoot, entry.Item.Id, pendingGamePath, log);
+                    }
                 }
                 else
                 {
@@ -258,7 +265,7 @@ namespace GK2ModInstaller.Core
             }
         }
 
-        private static void ApplyKnownOrBlocked(PlanEntry entry, LoaderSummary summary, string stagingRoot, string configDir, string gameRoot, Action<string> log)
+        private static void ApplyKnownOrBlocked(PlanEntry entry, LoaderSummary summary, string stagingRoot, string configDir, string gameRoot, string pendingGamePath, Action<string> log)
         {
             var target = Path.Combine(stagingRoot, entry.Item.Id);
             var backupRoot = Path.Combine(configDir, GameFolderInstaller.BackupDirName, entry.Item.Id);
@@ -283,6 +290,7 @@ namespace GK2ModInstaller.Core
                             int n = GameFolderInstaller.Install(entry.Item.SourceDir, gameRoot, backupRoot, log);
                             log?.Invoke(string.Format(LoaderText.GameFolderRestoredInstall, entry.Item.Id, n));
                         }
+                        ScheduleLegacyDllDeletes(entry.Item, gameRoot, pendingGamePath, log);
                     }
                     // Плагин: копируем, только если копии нет (первый запуск после ручной чистки).
                     else if (!Directory.Exists(target))
@@ -295,7 +303,11 @@ namespace GK2ModInstaller.Core
                 case DecisionKind.Blocked:
                     if (gameFolder)
                     {
-                        if (!string.IsNullOrEmpty(gameRoot)) GameFolderInstaller.Restore(gameRoot, backupRoot, log);
+                        if (!string.IsNullOrEmpty(gameRoot))
+                        {
+                            GameFolderInstaller.Restore(gameRoot, backupRoot, log);
+                            ScheduleRestoresIfBackupRemains(backupRoot, entry.Item.Id, pendingGamePath, log);
+                        }
                     }
                     else
                     {
@@ -307,7 +319,11 @@ namespace GK2ModInstaller.Core
                 case DecisionKind.Removed:
                     if (gameFolder)
                     {
-                        if (!string.IsNullOrEmpty(gameRoot)) GameFolderInstaller.Restore(gameRoot, backupRoot, log);
+                        if (!string.IsNullOrEmpty(gameRoot))
+                        {
+                            GameFolderInstaller.Restore(gameRoot, backupRoot, log);
+                            ScheduleRestoresIfBackupRemains(backupRoot, entry.Item.Id, pendingGamePath, log);
+                        }
                         log?.Invoke(string.Format(LoaderText.GameFolderUnsubscribed, entry.Item.Id));
                     }
                     else
@@ -320,6 +336,39 @@ namespace GK2ModInstaller.Core
                 default:
                     // New/Update обрабатываются выше.
                     break;
+            }
+        }
+
+        // Ставит в очередь удаление legacy-копий DLL game-folder мода из папки игры: их мог
+        // положить прежний загрузчик, а теперь DLL грузятся из айтема. Из-под игры файлы заняты —
+        // удалит инсталлятор при закрытой игре (BepInExInstaller.ApplyPendingGameActions).
+        private static void ScheduleLegacyDllDeletes(WorkshopItem item, string gameRoot, string pendingGamePath, Action<string> log)
+        {
+            if (item == null || item.DllFiles == null || string.IsNullOrEmpty(gameRoot)) return;
+            foreach (var dll in item.DllFiles)
+            {
+                string rel;
+                try { rel = dll.Substring(item.SourceDir.Length).TrimStart('\\', '/'); }
+                catch { continue; }
+                if (string.IsNullOrEmpty(rel)) continue;
+                if (!File.Exists(Path.Combine(gameRoot, rel))) continue;
+                PendingGameActions.Add(pendingGamePath,
+                    new PendingGameAction { Kind = PendingGameAction.DeleteKind, Rel = rel }, log);
+                log?.Invoke(string.Format(LoaderText.PendingGameQueuedDelete, rel));
+            }
+        }
+
+        // Если откат не прошёл (бэкап остался) — ставим откат в очередь для инсталлятора:
+        // из-под запущенной игры занятые файлы не вернуть.
+        private static void ScheduleRestoresIfBackupRemains(string backupRoot, string id, string pendingGamePath, Action<string> log)
+        {
+            if (string.IsNullOrEmpty(backupRoot) || !Directory.Exists(backupRoot)) return;
+            foreach (var rel in GameFolderInstaller.ManifestRelativePaths(backupRoot))
+            {
+                if (string.IsNullOrEmpty(rel)) continue;
+                PendingGameActions.Add(pendingGamePath,
+                    new PendingGameAction { Kind = PendingGameAction.RestoreKind, Rel = rel, Id = id }, log);
+                log?.Invoke(string.Format(LoaderText.PendingGameQueuedRestore, rel, id));
             }
         }
 

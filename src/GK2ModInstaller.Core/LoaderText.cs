@@ -76,6 +76,21 @@ namespace GK2ModInstaller.Core
             ["PendingHeader"] = ("# GK2 Workshop Loader: mods awaiting a decision. Rules are in GK2_WorkshopLoader.trust.txt.", "# GK2 Workshop Loader: моды, ожидающие решения. Правила — в GK2_WorkshopLoader.trust.txt."),
             ["PendingNotWrittenFormat"] = ("pending: file not written ({0})", "pending: файл не записан ({0})"),
 
+            // Deferred game-folder operations (applied by the installer when the game is closed)
+            ["PendingGameHeader"] = ("# GK2 Workshop Loader: game-folder actions applied when the game is closed.", "# GK2 Workshop Loader: действия с папкой игры, применяются при закрытой игре."),
+            ["PendingGameSkippedLine"] = ("pending-game: skipped line: ", "pending-game: пропущена строка: "),
+            ["PendingGameUnknownKind"] = ("pending-game: unknown action: ", "pending-game: неизвестное действие: "),
+            ["PendingGameNotReadFormat"] = ("pending-game: file not read ({0})", "pending-game: файл не прочитан ({0})"),
+            ["PendingGameNotWrittenFormat"] = ("pending-game: file not written ({0})", "pending-game: файл не записан ({0})"),
+            ["PendingGameQueuedDelete"] = ("pending-game: queued delete — {0}", "pending-game: отложено удаление — {0}"),
+            ["PendingGameQueuedRestore"] = ("pending-game: queued restore — {0} (mod {1})", "pending-game: отложен откат — {0} (мод {1})"),
+            ["PendingGameApplyStart"] = ("pending-game: applying {0} action(s)", "pending-game: применяю действий {0}"),
+            ["PendingGameDeleted"] = ("pending-game: deleted {0}", "pending-game: удалён {0}"),
+            ["PendingGameRestored"] = ("pending-game: restored {0} (mod {1})", "pending-game: восстановлен {0} (мод {1})"),
+            ["PendingGameDeleteFailed"] = ("pending-game: cannot delete {0} — kept for next time", "pending-game: не удалось удалить {0} — оставлено до следующего раза"),
+            ["PendingGameRestoreFailed"] = ("pending-game: cannot restore {0} — kept for next time", "pending-game: не удалось восстановить {0} — оставлено до следующего раза"),
+            ["PendingGameDone"] = ("pending-game: done — applied {0}, still pending {1}", "pending-game: готово — применено {0}, осталось {1}"),
+
             // Trust store
             ["TrustHeader"] = ("# GK2 Workshop Loader: decisions on mods. Delete a line to be asked again.", "# GK2 Workshop Loader: решения по модам. Удалите строку — спросят снова."),
             ["TrustSkippedLine"] = ("trust: skipped line: ", "trust: пропущена строка: "),
@@ -166,6 +181,19 @@ namespace GK2ModInstaller.Core
         public static string AcfNotParsed => Get(nameof(AcfNotParsed));
         public static string PendingHeader => Get(nameof(PendingHeader));
         public static string PendingNotWrittenFormat => Get(nameof(PendingNotWrittenFormat));
+        public static string PendingGameHeader => Get(nameof(PendingGameHeader));
+        public static string PendingGameSkippedLine => Get(nameof(PendingGameSkippedLine));
+        public static string PendingGameUnknownKind => Get(nameof(PendingGameUnknownKind));
+        public static string PendingGameNotReadFormat => Get(nameof(PendingGameNotReadFormat));
+        public static string PendingGameNotWrittenFormat => Get(nameof(PendingGameNotWrittenFormat));
+        public static string PendingGameQueuedDelete => Get(nameof(PendingGameQueuedDelete));
+        public static string PendingGameQueuedRestore => Get(nameof(PendingGameQueuedRestore));
+        public static string PendingGameApplyStart => Get(nameof(PendingGameApplyStart));
+        public static string PendingGameDeleted => Get(nameof(PendingGameDeleted));
+        public static string PendingGameRestored => Get(nameof(PendingGameRestored));
+        public static string PendingGameDeleteFailed => Get(nameof(PendingGameDeleteFailed));
+        public static string PendingGameRestoreFailed => Get(nameof(PendingGameRestoreFailed));
+        public static string PendingGameDone => Get(nameof(PendingGameDone));
         public static string TrustHeader => Get(nameof(TrustHeader));
         public static string TrustSkippedLine => Get(nameof(TrustSkippedLine));
         public static string TrustSkippedNoId => Get(nameof(TrustSkippedNoId));
