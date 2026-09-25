@@ -703,27 +703,28 @@ git tag v1.2.1; git push origin master; git push origin v1.2.1
 
 ---
 
-## Дополнение по E2E (25.09) — задачи 7-9 (выполнять ДО Task 6 «Документация и релизы»)
+## Дополнение по E2E (25.09) — задачи 7-9 (выполнять до Task 6 «Обновление и релизы»)
 
-Причина: см. §10 спеки. Прелоадер не может обновлять/удалять уже загруженные `Managed\*.dll` game-folder мода.
+Контекст: см. §10 спеки. Загрузчик не может перемещать/удалять заблокированные `Managed\*.dll` game-folder модов.
 
-### Task 7: Загрузка DLL game-folder модов вместо копирования (B)
+### Task 7: Загрузка DLL game-folder модов вместо перемещения (B)
 
-**Files:** создать `src/GK2ModInstaller.Core/GameFolderDllLoader.cs`; изменить `GameFolderInstaller.cs` (копировать только не-DLL), `WorkshopLoader.cs` (вызвать загрузчик), `GameFolderInstallerTests.cs` (+ новые тесты).
-- `GameFolderDllLoader.Load(IEnumerable<string> dllPaths, Action<string> log) → int` — грузит каждую существующую DLL через `Assembly.Load(File.ReadAllBytes(path))`; повторный вызов не дублирует (HashSet путей внутри), ошибки логирует, не бросает.
-- `GameFolderInstaller.Install` — пропускать `*.dll` (их судьба — загрузка, не копирование) и не вести по ним бэкап/манифест.
-- `WorkshopLoader`: на `Approve`/`Known` для GameFolder-мода — загрузить его DLL из `SourceDir` и скопировать только не-DLL; на `Deny`/`Removed` — DLL не разгружаем (нельзя), только данные.
-- Тесты: классификация DLL/не-DLL; `Install` не копирует DLL; `Load` идемпотентен и терпим к битым файлам (загрузка тестовой сборки из temp).
+**Files:** создать `src/GK2ModInstaller.Core/GameFolderDllLoader.cs`; изменить `GameFolderInstaller.cs` (копировать только не-DLL), `WorkshopLoader.cs` (вызов загрузки), `GameFolderInstallerTests.cs` (+ новый тест).
+- `GameFolderDllLoader.Load(IEnumerable<string> dllPaths, Action<string> log) → int` — грузит переданные DLL через `Assembly.Load(File.ReadAllBytes(path))`, пропускает уже загруженные (HashSet имён), возвращает число, не бросает.
+- `GameFolderInstaller.Install` — не копировать `*.dll` в папку игры (и другие DLL): пропускать их; копировать только не-DLL файлы (`Languages`, данные); бэкап/манифест/откат не ломаются.
+- `WorkshopLoader`: при `Approve`/`Known` для GameFolder-модов — грузить их DLL из `SourceDir` в процесс и планировать удаление legacy-копий из папки игры; при `Deny`/`Removed` — DLL не загружать (пропускать).
+- Тесты: `Load` на существующей/битой DLL/пути; `Install` не копирует DLL; загрузка в `WorkshopLoader` (на временной папке).
 
-### Task 8: Pending-действия и миграция legacy-копий (A)
+### Task 8: Pending-очередь и откат legacy-модов (A)
 
-**Files:** создать `src/GK2ModInstaller.Core/PendingGameActions.cs`; изменить `WorkshopLoader.cs` (писать pending при локе/legacy), `BepInExInstaller.cs` (`ApplyPendingGameActions(gameDir, log)`), тесты.
-- Формат `BepInEx\config\GK2_WorkshopLoader.pendinggame.txt`: строки `delete|<относительный путь>` и `restore|<rel>|<id>`, комментарии `#`.
-- Загрузчик при локе/обнаружении legacy-копий (id есть в наших backup-манифестах) дописывает действия.
-- `BepInExInstaller.ApplyPendingGameActions` при закрытой игре: удаляет/восстанавливает файлы по списку, чистит выполненные строки, логирует по-русски; вызывать из `Install` и из CLI (`--install`).
-- Тесты: парсинг/запись pending, применение delete/restore на temp-папках, идемпотентность.
+**Files:** создать `src/GK2ModInstaller.Core/PendingGameActions.cs`; изменить `WorkshopLoader.cs` (запись pending для game/legacy), `BepInExInstaller.cs` (`ApplyPendingGameActions(gameDir, log)`), тесты.
+- Формат `BepInEx\config\GK2_WorkshopLoader.pendinggame.txt`: строки `delete|<относительный путь>` / `restore|<rel>|<id>`; комментарии `#`.
+- При отказе/отключении legacy-мода (id есть в backup-манифесте) записывать отложенное действие.
+- `BepInExInstaller.ApplyPendingGameActions` при установке игры: удалить/восстановить файлы по списку, обновить манифест, логировать (отчёт). Вызывается из `Install` и в CLI (`--install`).
+- Тесты: запись/чтение pending, выполнение delete/restore на temp-папке, идемпотентность.
 
-### Task 9: Не записывать одобренный хеш, если установка провалилась
+### Task 9: Не запоминать одобренную версию, если установка не удалась
 
-**Files:** изменить `GameFolderInstaller.cs` (возвращать число неудач: `Install(...)`/`Restore(...)` → int/out), `WorkshopLoader.cs` (при неудачах сохранять прежний trust-хеш и строку «обновление отложено»), тесты.
-- Проверка: апдейт, где целевой путь занят (в тесте на месте файла — директория), не меняет хеш в trust и логирует; следующий запуск снова видит `Update`.
+**Files:** изменить `GameFolderInstaller.cs` (возвращать число ошибок: `Install(...)`/`Restore(...)` с `out int`), `WorkshopLoader.cs` (при неудаче — не писать новый хеш в trust, добавить `Note` «установка не удалась»), тесты.
+- Проблема: при неудачной установке/откате (DLL залочены запущенной игрой) loader всё равно записывал новый хеш в trust — на следующем запуске мод считался установленным, и обновление терялось.
+- Решение: `Install`/`Restore` возвращают число ошибок; при ошибках loader не перезаписывает trust-хеш (New → `Ask` + pending; Update → сохранить прежнюю запись), пишет `Note` и откладывает.
