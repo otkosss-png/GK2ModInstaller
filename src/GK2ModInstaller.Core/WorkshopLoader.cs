@@ -138,7 +138,7 @@ namespace GK2ModInstaller.Core
 
             if (pending.Count > 0)
                 PendingList.Write(Path.Combine(configDir, PendingFileName), pending, log);
-            if (pending.Count > 0 || summary.Approved > 0 || summary.Updates > 0 || summary.Blocked > 0 || summary.Removed > 0 || migration.Count > 0)
+            if (pending.Count > 0 || summary.Approved > 0 || summary.Updates > 0 || summary.Blocked > 0 || summary.Removed > 0 || summary.Postponed > 0 || migration.Count > 0)
             {
                 try
                 {
@@ -175,6 +175,7 @@ namespace GK2ModInstaller.Core
             if (answer == ConsentAnswer.Approve)
             {
                 var backupRoot = Path.Combine(configDir, GameFolderInstaller.BackupDirName, entry.Item.Id);
+                var installFailed = false;
                 if (entry.Item.Kind == WorkshopItemKind.GameFolder)
                 {
                     if (string.IsNullOrEmpty(gameRoot))
@@ -187,7 +188,9 @@ namespace GK2ModInstaller.Core
                         GameFolderInstaller.Restore(gameRoot, backupRoot, log);
                         // DLL грузим в процесс из айтема, а в папку игры кладём только данные.
                         GameFolderDllLoader.Load(entry.Item.DllFiles, log);
-                        int n = GameFolderInstaller.Install(entry.Item.SourceDir, gameRoot, backupRoot, log);
+                        int failed;
+                        int n = GameFolderInstaller.Install(entry.Item.SourceDir, gameRoot, backupRoot, log, out failed);
+                        installFailed = failed > 0;
                         log?.Invoke(string.Format(LoaderText.GameFolderInstalledFiles, entry.Item.Id, n));
                         // Legacy-копии DLL из прежней установки убрать из папки игры не выйдет
                         // из-под игры — ставим в очередь для инсталлятора.
@@ -200,6 +203,34 @@ namespace GK2ModInstaller.Core
                     WorkshopSync.CopyDir(entry.Item.SourceDir, target);
                     CopyItemConfigs(entry.Item, configDir, log);
                 }
+
+                // Файлы не легли (заняты игрой): нельзя записывать одобрение с новым хешем —
+                // на следующем запуске мод сочли бы установленным, и обновление потерялось бы.
+                // При обновлении сохраняем прежнюю запись; иначе просим заново. См. Task 9.
+                if (installFailed)
+                {
+                    if (entry.Kind == DecisionKind.Update && entry.Trust != null)
+                    {
+                        entry.Trust.Note = LoaderText.NoteInstallFailed + DateTime.Now.ToString("yyyy-MM-dd");
+                        trust.Set(entry.Trust);
+                    }
+                    else
+                    {
+                        trust.Set(new TrustEntry
+                        {
+                            Id = entry.Item.Id,
+                            Sha256 = entry.Fingerprint,
+                            State = TrustState.Ask,
+                            Title = entry.Item.Title,
+                            Note = LoaderText.NoteInstallFailed + DateTime.Now.ToString("yyyy-MM-dd")
+                        });
+                        pending.Add(prompt);
+                    }
+                    summary.Postponed++;
+                    log?.Invoke(string.Format(LoaderText.GameFolderInstallFailed, entry.Item.Id));
+                    return;
+                }
+
                 trust.Set(new TrustEntry
                 {
                     Id = entry.Item.Id,

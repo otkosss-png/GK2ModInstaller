@@ -17,15 +17,23 @@ namespace GK2ModInstaller.Core
 
         // Копирует содержимое sourceDir в gameRoot. Возвращает число скопированных файлов.
         public static int Install(string sourceDir, string gameRoot, string backupRoot, Action<string> log)
+            => Install(sourceDir, gameRoot, backupRoot, log, out _);
+
+        // failed — число ошибок (файл не скопирован). По нему загрузчик решает, можно ли
+        // записывать новый хеш в trust: если нет — мод останется «не обновлённым». См. Task 9.
+        public static int Install(string sourceDir, string gameRoot, string backupRoot, Action<string> log, out int failed)
         {
+            failed = 0;
             if (string.IsNullOrEmpty(sourceDir) || !Directory.Exists(sourceDir))
             {
                 log?.Invoke("game-folder: источник не найден — " + sourceDir);
+                failed = 1;
                 return 0;
             }
             if (string.IsNullOrEmpty(gameRoot))
             {
                 log?.Invoke("game-folder: не задана папка игры — установка невозможна");
+                failed = 1;
                 return 0;
             }
 
@@ -40,6 +48,7 @@ namespace GK2ModInstaller.Core
             catch (Exception ex)
             {
                 log?.Invoke("game-folder: не удалось подготовить бэкап (" + ex.Message + ")");
+                failed = 1;
                 return 0;
             }
 
@@ -82,6 +91,7 @@ namespace GK2ModInstaller.Core
                 }
                 catch (Exception ex)
                 {
+                    failed++;
                     log?.Invoke("game-folder: не удалось скопировать " + rel + " (" + ex.Message + ")");
                 }
             }
@@ -91,18 +101,24 @@ namespace GK2ModInstaller.Core
         // Возвращает папку игры в состояние до установки по манифесту, затем удаляет бэкап.
         // Возвращает число восстановленных/удалённых файлов. Никогда не бросает исключений.
         public static int Restore(string gameRoot, string backupRoot, Action<string> log)
+            => Restore(gameRoot, backupRoot, log, out _);
+
+        // failed — число ошибок отката. Ненулевое значит, что бэкап сохранён и откат нужен повторно
+        // (обычно файл занят запущенной игрой) — инсталлятор применит его из pendinggame.txt.
+        public static int Restore(string gameRoot, string backupRoot, Action<string> log, out int failed)
         {
             var restored = 0;
+            failed = 0;
             // Продиктовано ревью: бэкап — единственная копия оригиналов, поэтому удаляем его только
             // если ВСЕ записи манифеста обработаны успешно И папка игры была известна. Иначе —
             // сохраняем для повторного отката (например, файл держит запущенная игра).
-            var failed = false;
             var gameRootValid = !string.IsNullOrEmpty(gameRoot);
             try
             {
                 if (string.IsNullOrEmpty(backupRoot) || !Directory.Exists(backupRoot)) return 0;
                 if (!gameRootValid)
                 {
+                    failed = 1;
                     log?.Invoke("game-folder: не задана папка игры — откат невозможен, бэкап сохранён: " + backupRoot);
                     return 0;
                 }
@@ -138,7 +154,7 @@ namespace GK2ModInstaller.Core
                                 }
                                 else
                                 {
-                                    failed = true;
+                                    failed++;
                                     log?.Invoke("game-folder: бэкап не найден — " + rel);
                                 }
                             }
@@ -154,7 +170,7 @@ namespace GK2ModInstaller.Core
                         }
                         catch (Exception ex)
                         {
-                            failed = true;
+                            failed++;
                             log?.Invoke("game-folder: не удалось откатить " + rel + " (" + ex.Message + ")");
                         }
                     }
@@ -166,11 +182,11 @@ namespace GK2ModInstaller.Core
             }
             catch (Exception ex)
             {
-                failed = true;
+                failed++;
                 log?.Invoke("game-folder: откат прерван (" + ex.Message + ")");
             }
 
-            if (failed)
+            if (failed > 0)
             {
                 log?.Invoke("game-folder: восстановление неполное — бэкап сохранён: " + backupRoot);
             }

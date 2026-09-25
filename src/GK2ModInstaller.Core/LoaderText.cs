@@ -48,6 +48,7 @@ namespace GK2ModInstaller.Core
             ["DialogUnavailablePostponed"] = ("Workshop: dialog unavailable ({0}) — mod postponed: {1}", "Workshop: диалог недоступен ({0}) — мод отложен: {1}"),
             ["GameFolderNotDeterminedSkip"] = ("Workshop: game-folder mod {0} — game folder not determined, skipping", "Workshop: game-folder мод {0} — папка игры не определена, пропуск"),
             ["GameFolderInstalledFiles"] = ("Workshop: game-folder mod {0} — files installed: {1}", "Workshop: game-folder мод {0} — установлено файлов {1}"),
+            ["GameFolderInstallFailed"] = ("Workshop: game-folder mod {0} — install failed, previous state kept", "Workshop: game-folder мод {0} — установка не удалась, прежнее состояние сохранено"),
             ["NoteApproved"] = ("approved ", "одобрено "),
             ["NoteUpdated"] = ("updated ", "обновление "),
             ["ApprovedLog"] = ("Workshop: approved mod {0} ({1})", "Workshop: одобрен мод {0} ({1})"),
@@ -157,6 +158,7 @@ namespace GK2ModInstaller.Core
         public static string DialogUnavailablePostponed => Get(nameof(DialogUnavailablePostponed));
         public static string GameFolderNotDeterminedSkip => Get(nameof(GameFolderNotDeterminedSkip));
         public static string GameFolderInstalledFiles => Get(nameof(GameFolderInstalledFiles));
+        public static string GameFolderInstallFailed => Get(nameof(GameFolderInstallFailed));
         public static string NoteApproved => Get(nameof(NoteApproved));
         public static string NoteUpdated => Get(nameof(NoteUpdated));
         public static string ApprovedLog => Get(nameof(ApprovedLog));

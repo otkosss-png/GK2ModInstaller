@@ -196,6 +196,66 @@ namespace GK2ModInstaller.Tests
         }
 
         [Fact]
+        public void Install_reports_failed_count_when_a_file_cannot_be_copied()
+        {
+            string src = NewDir("gk2gfsrc");
+            string game = NewDir("gk2gfgame");
+            string backupParent = NewDir("gk2gfbak");
+            string backup = Path.Combine(backupParent, "item");
+            try
+            {
+                File.WriteAllText(Path.Combine(src, "data.bin"), "DATA");
+                // Цель — каталог: File.Copy на Windows детерминированно падает.
+                Directory.CreateDirectory(Path.Combine(game, "data.bin"));
+
+                int n = GameFolderInstaller.Install(src, game, backup, null, out int failed);
+
+                Assert.Equal(0, n);
+                Assert.Equal(1, failed);
+            }
+            finally { Del(src); Del(game); Del(backupParent); }
+        }
+
+        [Fact]
+        public void Install_reports_failure_for_missing_source()
+        {
+            string game = NewDir("gk2gfgame");
+            string backupParent = NewDir("gk2gfbak");
+            try
+            {
+                int n = GameFolderInstaller.Install(Path.Combine(game, "nope"), game, Path.Combine(backupParent, "item"), null, out int failed);
+                Assert.Equal(0, n);
+                Assert.Equal(1, failed);
+            }
+            finally { Del(game); Del(backupParent); }
+        }
+
+        [Fact]
+        public void Restore_reports_failed_count_and_zero_after_retry()
+        {
+            string game = NewDir("gk2gfgame");
+            string backupParent = NewDir("gk2gfbak");
+            string backup = Path.Combine(backupParent, "item");
+            try
+            {
+                Directory.CreateDirectory(Path.Combine(backup, "files"));
+                File.WriteAllText(Path.Combine(backup, "files", "blocked.txt"), "ORIG");
+                File.WriteAllText(Path.Combine(backup, "manifest.txt"), "blocked.txt|1\n");
+                Directory.CreateDirectory(Path.Combine(game, "blocked.txt"));
+
+                int first = GameFolderInstaller.Restore(game, backup, null, out int failedFirst);
+                Assert.Equal(0, first);
+                Assert.Equal(1, failedFirst);
+
+                Directory.Delete(Path.Combine(game, "blocked.txt"));
+                int second = GameFolderInstaller.Restore(game, backup, null, out int failedSecond);
+                Assert.Equal(1, second);
+                Assert.Equal(0, failedSecond);
+            }
+            finally { Del(game); Del(backupParent); }
+        }
+
+        [Fact]
         public void Restore_on_missing_backup_is_a_noop_and_never_throws()
         {
             string game = NewDir("gk2gfgame");

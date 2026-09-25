@@ -632,5 +632,58 @@ namespace GK2ModInstaller.Tests
             }
             finally { MakeWorkshop.SafeDelete(root); }
         }
+
+        [Fact]
+        public void GameFolder_new_install_failure_is_asked_again_and_not_approved()
+        {
+            string root = MakeWorkshop.Tmp();
+            try
+            {
+                var options = Options(root);
+                Directory.CreateDirectory(options.WorkshopRoot);
+                MakeWorkshop.GameFolderItem(options.WorkshopRoot, "720", @"GraveyardKeeper2_Data\Managed\data.bin", "DATA");
+                // Цель — каталог: установка не пройдёт.
+                Directory.CreateDirectory(Path.Combine(root, "GraveyardKeeper2_Data", "Managed", "data.bin"));
+
+                var summary = WorkshopLoader.Run(options, new FakeDialog(), null);
+
+                var entry = TrustStore.Load(Path.Combine(options.BepInExRoot, "config", WorkshopLoader.TrustFileName), null).Get("720");
+                Assert.Equal(TrustState.Ask, entry.State);
+                Assert.Contains("install failed", entry.Note ?? "");
+                Assert.Equal(1, summary.Postponed);
+                Assert.Equal(0, summary.Approved);
+                var pending = Path.Combine(options.BepInExRoot, "config", WorkshopLoader.PendingFileName);
+                Assert.True(File.Exists(pending));
+                Assert.Contains("720", File.ReadAllText(pending));
+            }
+            finally { MakeWorkshop.SafeDelete(root); }
+        }
+
+        [Fact]
+        public void GameFolder_update_failure_keeps_previous_approved_hash()
+        {
+            string root = MakeWorkshop.Tmp();
+            try
+            {
+                var options = Options(root);
+                Directory.CreateDirectory(options.WorkshopRoot);
+                MakeWorkshop.GameFolderItem(options.WorkshopRoot, "721", @"GraveyardKeeper2_Data\Managed\data.bin", "NEW");
+                Directory.CreateDirectory(Path.Combine(root, "GraveyardKeeper2_Data", "Managed", "data.bin"));
+                string trustPath = Path.Combine(options.BepInExRoot, "config", WorkshopLoader.TrustFileName);
+                var store = TrustStore.Load(trustPath, null);
+                store.Set(new TrustEntry { Id = "721", Sha256 = "old-hash", State = TrustState.Approved, Title = "Mod" });
+                store.Save(trustPath);
+
+                var summary = WorkshopLoader.Run(options, new FakeDialog(), null);
+
+                var entry = TrustStore.Load(trustPath, null).Get("721");
+                Assert.Equal(TrustState.Approved, entry.State);
+                Assert.Equal("old-hash", entry.Sha256);
+                Assert.Contains("install failed", entry.Note ?? "");
+                Assert.Equal(1, summary.Postponed);
+                Assert.Equal(0, summary.Updates);
+            }
+            finally { MakeWorkshop.SafeDelete(root); }
+        }
     }
 }
