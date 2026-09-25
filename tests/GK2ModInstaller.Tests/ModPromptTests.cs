@@ -8,6 +8,12 @@ namespace GK2ModInstaller.Tests
 {
     public class ModPromptTests
     {
+        public ModPromptTests()
+        {
+            // Tests must not depend on the machine culture.
+            LoaderText.Language = LoaderLanguage.En;
+        }
+
         private static ModPrompt Sample(bool update = false) => new ModPrompt
         {
             Id = "3807023815",
@@ -22,37 +28,37 @@ namespace GK2ModInstaller.Tests
         [Fact]
         public void Text_for_new_mod_contains_title_id_findings_and_buttons_hint()
         {
-            string text = Sample().Text("Мод из Workshop");
-            Assert.Contains("Мод из Workshop", text);
+            string text = Sample().Text("New Workshop mod");
+            Assert.Contains("New Workshop mod", text);
             Assert.Contains("Better Auto Crafting", text);
             Assert.Contains("3807023815", text);
-            Assert.Contains("сеть", text);
-            Assert.Contains("Тот же мод уже стоит вручную", text);
+            Assert.Contains("network", text);
+            Assert.Contains("installed manually", text);
             Assert.Contains("Cancel", text);
         }
 
         [Fact]
         public void Text_for_update_mentions_update_and_keeps_previous_version_hint()
         {
-            string text = Sample(true).Text("Обновление мода");
-            Assert.Contains("Обновление мода", text);
-            Assert.Contains("прежняя одобренная версия", text);
+            string text = Sample(true).Text("Update of a Workshop mod");
+            Assert.Contains("Update of a Workshop mod", text);
+            Assert.Contains("previous approved version", text);
         }
 
         [Fact]
         public void Text_includes_target_when_set()
         {
             var prompt = Sample();
-            prompt.Target = @"папка игры (GraveyardKeeper2_Data\Managed и т.п.)";
-            string text = prompt.Text("Мод из Workshop");
-            Assert.Contains("Назначение: ", text);
-            Assert.Contains("папка игры", text);
+            prompt.Target = @"game folder (GraveyardKeeper2_Data\Managed etc.)";
+            string text = prompt.Text("New Workshop mod");
+            Assert.Contains("Target: ", text);
+            Assert.Contains("game folder", text);
         }
 
         [Fact]
         public void Text_omits_target_line_when_not_set()
         {
-            Assert.DoesNotContain("Назначение:", Sample().Text("Мод из Workshop"));
+            Assert.DoesNotContain("Target:", Sample().Text("New Workshop mod"));
         }
 
         [Fact]
@@ -61,9 +67,24 @@ namespace GK2ModInstaller.Tests
             var prompt = Sample();
             prompt.Findings = new List<Finding>();
             prompt.Duplicates = new List<string>();
-            string text = prompt.Text("Мод из Workshop");
-            Assert.Contains("ничего подозрительного", text);
-            Assert.DoesNotContain("вручную", text);
+            string text = prompt.Text("New Workshop mod");
+            Assert.Contains("nothing suspicious found", text);
+            Assert.DoesNotContain("manually", text);
+        }
+
+        [Fact]
+        public void Text_in_russian_contains_russian_labels()
+        {
+            var prompt = Sample();
+            prompt.Target = "BepInEx\\plugins";
+            try
+            {
+                LoaderText.Language = LoaderLanguage.Ru;
+                string text = prompt.Text("Новый мод из Workshop");
+                Assert.Contains("Одобрить", text);
+                Assert.Contains("Назначение:", text);
+            }
+            finally { LoaderText.Language = LoaderLanguage.En; }
         }
 
         [Fact]

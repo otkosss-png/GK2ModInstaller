@@ -77,7 +77,7 @@ namespace GK2ModInstaller.Core
                     if (line.Length == 0) continue;
                     if (line.StartsWith("#", StringComparison.Ordinal)) { store._header.Add(raw); continue; }
                     var parts = line.Split('|');
-                    if (parts.Length < 3) { log?.Invoke("trust: пропущена строка: " + line); continue; }
+                    if (parts.Length < 3) { log?.Invoke(LoaderText.TrustSkippedLine + line); continue; }
                     var entry = new TrustEntry
                     {
                         Id = parts[0].Trim(),
@@ -87,12 +87,12 @@ namespace GK2ModInstaller.Core
                         Note = parts.Length > 4 ? string.Join("|", parts, 4, parts.Length - 4).Trim() : ""
                     };
                     if (entry.Id.Length > 0) store.Set(entry);
-                    else log?.Invoke("trust: пропущена строка без id: " + line);
+                    else log?.Invoke(LoaderText.TrustSkippedNoId + line);
                 }
             }
             catch (Exception ex)
             {
-                log?.Invoke("trust: файл не прочитан (" + ex.Message + "), начинаю заново");
+                log?.Invoke(string.Format(LoaderText.TrustNotReadFormat, ex.Message));
                 try { File.Move(path, path + ".bak-" + DateTime.Now.ToString("yyyyMMdd-HHmmss", CultureInfo.InvariantCulture)); }
                 catch { }
                 return new TrustStore();
@@ -107,7 +107,7 @@ namespace GK2ModInstaller.Core
             if (!string.IsNullOrEmpty(dir)) Directory.CreateDirectory(dir);
             var sb = new StringBuilder();
             if (_header.Count == 0)
-                sb.AppendLine("# GK2 Workshop Loader: решения по модам. Удалите строку — спросят снова.");
+                sb.AppendLine(LoaderText.TrustHeader);
             foreach (var h in _header) sb.AppendLine(h);
             foreach (var e in All())
             {

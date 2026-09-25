@@ -17,15 +17,14 @@ namespace GK2ModInstaller.Patcher
         private const uint MB_SETFOREGROUND = 0x00010000;
         private const int IDYES = 6;
         private const int IDNO = 7;
-        private const string Caption = "GK2 Workshop Loader";
 
         [DllImport("user32.dll", CharSet = CharSet.Unicode)]
         private static extern int MessageBoxW(IntPtr hWnd, string text, string caption, uint type);
 
         public ConsentAnswer Ask(ModPrompt prompt)
         {
-            string header = prompt.IsUpdate ? "Обновление мода из Workshop" : "Новый мод из Workshop";
-            int r = MessageBoxW(IntPtr.Zero, prompt.Text(header), Caption,
+            string header = prompt.IsUpdate ? LoaderText.UpdateModHeader : LoaderText.NewModHeader;
+            int r = MessageBoxW(IntPtr.Zero, prompt.Text(header), LoaderText.Caption,
                 MB_YESNOCANCEL | MB_ICONWARNING | MB_TOPMOST | MB_SETFOREGROUND);
             if (r == IDYES) return ConsentAnswer.Approve;
             if (r == IDNO) return ConsentAnswer.Deny;
@@ -35,14 +34,14 @@ namespace GK2ModInstaller.Patcher
         public BulkAnswer AskBulkTrust(IReadOnlyList<ModPrompt> mods)
         {
             var sb = new StringBuilder();
-            sb.AppendLine("Найдено " + mods.Count + " мод(ов), установленных прежней версией автозагрузчика — без вашего согласия.");
-            sb.AppendLine("Они уже стоят в BepInEx\\plugins\\_Workshop и работают. Доверять им всем?");
+            sb.AppendLine(string.Format(LoaderText.BulkIntroFormat, mods.Count));
+            sb.AppendLine(LoaderText.BulkIntro2);
             sb.AppendLine();
             foreach (var m in mods) sb.AppendLine("• " + m.Title + " (id " + m.Id + ")");
             sb.AppendLine();
-            sb.AppendLine("Yes — доверять всем · No — спросить про каждый отдельно · Cancel — оставить как есть и спросить позже");
+            sb.AppendLine(LoaderText.BulkButtonHint);
 
-            int r = MessageBoxW(IntPtr.Zero, sb.ToString(), Caption,
+            int r = MessageBoxW(IntPtr.Zero, sb.ToString(), LoaderText.Caption,
                 MB_YESNOCANCEL | MB_ICONWARNING | MB_TOPMOST | MB_SETFOREGROUND);
             if (r == IDYES) return BulkAnswer.All;
             if (r == IDNO) return BulkAnswer.AskEach;
@@ -51,7 +50,7 @@ namespace GK2ModInstaller.Patcher
 
         public void Warn(string text)
         {
-            MessageBoxW(IntPtr.Zero, text, Caption, MB_OK | MB_ICONINFORMATION | MB_TOPMOST | MB_SETFOREGROUND);
+            MessageBoxW(IntPtr.Zero, text, LoaderText.Caption, MB_OK | MB_ICONINFORMATION | MB_TOPMOST | MB_SETFOREGROUND);
         }
     }
 }

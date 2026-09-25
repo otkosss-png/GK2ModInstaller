@@ -48,7 +48,7 @@ namespace GK2ModInstaller.Core
             }
             catch (Exception ex)
             {
-                log?.Invoke("мод: не сборка, метаданные не прочитаны — " + Path.GetFileName(dllPath) + " (" + ex.Message + ")");
+                log?.Invoke(LoaderText.NotAnAssembly + Path.GetFileName(dllPath) + " (" + ex.Message + ")");
                 return fallback;
             }
         }

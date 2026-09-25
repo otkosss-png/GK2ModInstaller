@@ -26,23 +26,23 @@ namespace GK2ModInstaller.Core
             sb.Append(Title ?? Id);
             if (!string.IsNullOrEmpty(Version)) sb.Append(" v").Append(Version);
             sb.Append(" (id ").Append(Id).Append(')').AppendLine();
-            if (Files != null && Files.Count > 0) sb.AppendLine("Файлы: " + string.Join(", ", Files));
-            if (!string.IsNullOrEmpty(Target)) sb.AppendLine("Назначение: " + Target);
+            if (Files != null && Files.Count > 0) sb.AppendLine(LoaderText.FilesPrefix + string.Join(", ", Files));
+            if (!string.IsNullOrEmpty(Target)) sb.AppendLine(LoaderText.TargetPrefix + Target);
 
             if (Findings != null && Findings.Count > 0)
-                sb.AppendLine("Проверка кода: " + string.Join(", ", Categories()));
+                sb.AppendLine(LoaderText.CodeCheckPrefix + string.Join(", ", Categories()));
             else
-                sb.AppendLine("Проверка кода: ничего подозрительного не найдено");
+                sb.AppendLine(LoaderText.CodeCheckPrefix + LoaderText.CodeCheckClean);
 
             if (Duplicates != null && Duplicates.Count > 0)
-                sb.AppendLine("Тот же мод уже стоит вручную в BepInEx\\plugins: " + string.Join(", ", Duplicates));
+                sb.AppendLine(LoaderText.DuplicateLine + string.Join(", ", Duplicates));
 
             sb.AppendLine();
             if (IsUpdate)
-                sb.AppendLine("Если ответить Cancel — прежняя одобренная версия продолжит работать.");
-            sb.AppendLine("Мод запускается с правами игры (файлы, интернет). Одобрить?");
+                sb.AppendLine(LoaderText.UpdateHint);
+            sb.AppendLine(LoaderText.ApproveQuestion);
             sb.AppendLine();
-            sb.AppendLine("Yes — одобрить · No — заблокировать навсегда · Cancel — спросить позже");
+            sb.AppendLine(LoaderText.ButtonHint);
             return sb.ToString();
         }
 
@@ -51,17 +51,17 @@ namespace GK2ModInstaller.Core
             var list = new List<string>();
             foreach (var f in Findings)
             {
-                string ru;
+                string name;
                 switch (f.Category)
                 {
-                    case FindingCategory.Network: ru = "сеть"; break;
-                    case FindingCategory.Process: ru = "запуск программ"; break;
-                    case FindingCategory.FileDelete: ru = "удаление/перемещение файлов"; break;
-                    case FindingCategory.CodeLoad: ru = "загрузка кода"; break;
-                    case FindingCategory.Registry: ru = "реестр"; break;
-                    default: ru = "нативный код (DllImport)"; break;
+                    case FindingCategory.Network: name = LoaderText.CategoryNetwork; break;
+                    case FindingCategory.Process: name = LoaderText.CategoryProcess; break;
+                    case FindingCategory.FileDelete: name = LoaderText.CategoryFileDelete; break;
+                    case FindingCategory.CodeLoad: name = LoaderText.CategoryCodeLoad; break;
+                    case FindingCategory.Registry: name = LoaderText.CategoryRegistry; break;
+                    default: name = LoaderText.CategoryNative; break;
                 }
-                if (!list.Contains(ru)) list.Add(ru);
+                if (!list.Contains(name)) list.Add(name);
             }
             return list;
         }

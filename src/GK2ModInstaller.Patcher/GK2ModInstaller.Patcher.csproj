@@ -20,6 +20,8 @@
     <Compile Include="..\GK2ModInstaller.Core\AcfTimes.cs" Link="AcfTimes.cs" />
     <Compile Include="..\GK2ModInstaller.Core\LoaderDialog.cs" Link="LoaderDialog.cs" />
     <Compile Include="..\GK2ModInstaller.Core\PendingList.cs" Link="PendingList.cs" />
+    <Compile Include="..\GK2ModInstaller.Core\LoaderText.cs" Link="LoaderText.cs" />
+    <Compile Include="..\GK2ModInstaller.Core\LoaderConfig.cs" Link="LoaderConfig.cs" />
   </ItemGroup>
   <ItemGroup>
     <Reference Include="BepInEx"><HintPath>$(GameDir)\BepInEx\core\BepInEx.dll</HintPath><Private>false</Private></Reference>

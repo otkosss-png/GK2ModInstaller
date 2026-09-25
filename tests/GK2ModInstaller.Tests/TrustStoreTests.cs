@@ -7,6 +7,11 @@ namespace GK2ModInstaller.Tests
 {
     public class TrustStoreTests
     {
+        public TrustStoreTests()
+        {
+            LoaderText.Language = LoaderLanguage.En;
+        }
+
         private static string TmpFile() => Path.Combine(Path.GetTempPath(), "gk2trust_" + Guid.NewGuid().ToString("N") + ".txt");
 
         [Fact]
@@ -63,7 +68,7 @@ namespace GK2ModInstaller.Tests
                 var store = TrustStore.Load(path, logs.Add);
                 Assert.Null(store.Get("мусор без разделителей"));
                 Assert.Equal(TrustState.Approved, store.Get("333").State);
-                Assert.Contains(logs, l => l.Contains("пропущена строка"));
+                Assert.Contains(logs, l => l.Contains("skipped line"));
 
                 store.Save(path);
                 Assert.Contains("# мой комментарий", File.ReadAllText(path));

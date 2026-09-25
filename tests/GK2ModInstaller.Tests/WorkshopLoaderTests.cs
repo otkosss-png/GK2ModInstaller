@@ -9,6 +9,11 @@ namespace GK2ModInstaller.Tests
 {
     public class WorkshopLoaderTests
     {
+        public WorkshopLoaderTests()
+        {
+            LoaderText.Language = LoaderLanguage.En;
+        }
+
         private static LoaderOptions Options(string root)
         {
             string bep = Path.Combine(root, "BepInEx");
@@ -277,7 +282,7 @@ namespace GK2ModInstaller.Tests
                 dialog.OnAsk = _ => ConsentAnswer.Later;
                 var logs = new System.Collections.Generic.List<string>();
                 WorkshopLoader.Run(options, dialog, logs.Add);
-                Assert.Contains(logs, l => l.StartsWith("Workshop:") && l.Contains("отложен"));
+                Assert.Contains(logs, l => l.StartsWith("Workshop:") && l.Contains("postponed"));
                 string pending = Path.Combine(options.BepInExRoot, "config", WorkshopLoader.PendingFileName);
                 Assert.Contains("1000", File.ReadAllText(pending));
             }
@@ -409,7 +414,7 @@ namespace GK2ModInstaller.Tests
                 var afterFirst = TrustStore.Load(trustPath, null).Get("888");
                 Assert.Equal(TrustState.Approved, afterFirst.State);
                 Assert.Equal("старый-хеш", afterFirst.Sha256);
-                Assert.Contains("отложено", afterFirst.Note ?? "");
+                Assert.Contains("postponed", afterFirst.Note ?? "");
 
                 dialog.Asked.Clear();
                 var second = WorkshopLoader.Run(options, dialog, null);

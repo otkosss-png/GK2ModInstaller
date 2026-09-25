@@ -14,7 +14,7 @@ namespace GK2ModInstaller.Core
                 var dir = Path.GetDirectoryName(path);
                 if (!string.IsNullOrEmpty(dir)) Directory.CreateDirectory(dir);
                 var sb = new StringBuilder();
-                sb.AppendLine("# GK2 Workshop Loader: моды, ожидающие решения. Правила — в GK2_WorkshopLoader.trust.txt.");
+                sb.AppendLine(LoaderText.PendingHeader);
                 if (mods != null)
                     foreach (var m in mods)
                         sb.AppendLine((m.Id ?? "?") + "|" + (m.Title ?? ""));
@@ -22,7 +22,7 @@ namespace GK2ModInstaller.Core
             }
             catch (Exception ex)
             {
-                log?.Invoke("pending: файл не записан (" + ex.Message + ")");
+                log?.Invoke(string.Format(LoaderText.PendingNotWrittenFormat, ex.Message));
             }
         }
     }

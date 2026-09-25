@@ -8,6 +8,11 @@ namespace GK2ModInstaller.Tests
 {
     public class WorkshopItemsTests
     {
+        public WorkshopItemsTests()
+        {
+            LoaderText.Language = LoaderLanguage.En;
+        }
+
         private static string Tmp() => Path.Combine(Path.GetTempPath(), "gk2items_" + Guid.NewGuid().ToString("N"));
 
         private static void MakeItem(string workshopRoot, string id, string dllName, string content, string cfgName)
@@ -54,7 +59,7 @@ namespace GK2ModInstaller.Tests
                 Assert.Equal("", item.Version);
                 Assert.Equal(new[] { "MyMod" }, item.AssemblyNames.ToArray());
                 Assert.Single(item.DllFiles);
-                Assert.Contains(logs, l => l.Contains("метаданные"));
+                Assert.Contains(logs, l => l.Contains("metadata"));
             }
             finally { Directory.Delete(root, true); }
         }

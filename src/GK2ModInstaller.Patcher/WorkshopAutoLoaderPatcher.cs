@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Globalization;
 using System.IO;
 using BepInEx;
 using BepInEx.Logging;
@@ -17,10 +18,16 @@ namespace GK2ModInstaller.Patcher
         {
             var log = Logger.CreateLogSource("GK2.WorkshopLoader");
             string bep = Paths.BepInExRootPath;
+
+            // Resolve the interface language before anything user-visible is written.
+            bool systemIsRussian = LoaderText.DetectFor(CultureInfo.CurrentUICulture?.TwoLetterISOLanguageName) == LoaderLanguage.Ru;
+            LoaderText.Language = LoaderConfig.Resolve(
+                Path.Combine(bep, "config", LoaderConfig.FileName), systemIsRussian, log.LogInfo);
+
             string steamapps = FindSteamAppsRoot(Directory.GetParent(bep)?.FullName);
             string workshop = steamapps == null ? null : Path.Combine(steamapps, "workshop", "content", WorkshopId);
             string acf = steamapps == null ? null : Path.Combine(steamapps, "workshop", "appworkshop_" + WorkshopId + ".acf");
-            log.LogInfo("Workshop root: " + (workshop ?? "<не найден>"));
+            log.LogInfo(LoaderText.PatcherWorkshopRoot + (workshop ?? LoaderText.PatcherNotDetermined));
 
             var options = new LoaderOptions { WorkshopRoot = workshop, WorkshopAcfPath = acf, BepInExRoot = bep };
             try
@@ -29,7 +36,7 @@ namespace GK2ModInstaller.Patcher
             }
             catch (System.Exception ex)
             {
-                log.LogError("Автозагрузка Workshop упала: " + ex);
+                log.LogError(LoaderText.PatcherFailed + ex);
             }
         }
 
