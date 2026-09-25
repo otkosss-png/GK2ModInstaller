@@ -61,6 +61,12 @@ namespace GK2ModInstaller.Core
             ["BlockedNotLoaded"] = ("Workshop: blocked mod not loaded — {0}", "Workshop: заблокированный мод не грузим — {0}"),
             ["GameFolderUnsubscribed"] = ("Workshop: game-folder mod unsubscribed, files restored — {0}", "Workshop: game-folder мод отписан, файлы возвращены — {0}"),
             ["UnsubscribedCopyDeleted"] = ("Workshop: mod unsubscribed, copy deleted — {0}", "Workshop: мод отписан, копия удалена — {0}"),
+            // Game-folder DLLs are loaded in-process, not copied into the game folder.
+            ["GameFolderDllLoaded"] = ("game-folder: loaded DLL {0}", "game-folder: загружен DLL {0}"),
+            ["GameFolderDllAlreadyLoaded"] = ("game-folder: DLL already loaded, skipping {0}", "game-folder: DLL уже загружен, пропуск {0}"),
+            ["GameFolderDllFailed"] = ("game-folder: DLL not loaded — {0} ({1})", "game-folder: DLL не загружен — {0} ({1})"),
+            ["GameFolderDllSkipped"] = ("game-folder: DLL stays in the item (loaded in-process) — {0}", "game-folder: DLL оставлен в айтеме (грузится в процессе) — {0}"),
+            ["NoteInstallFailed"] = ("install failed ", "установка не удалась "),
             ["TargetGameFolder"] = ("game folder (GraveyardKeeper2_Data\\Managed etc.)", "папка игры (GraveyardKeeper2_Data\\Managed и т.п.)"),
             ["TargetPlugins"] = ("BepInEx\\plugins", "BepInEx\\plugins"),
             ["AcfTimeupdated"] = ("Workshop: ACF — mod {0} timeupdated={1}", "Workshop: ACF — у мода {0} timeupdated={1}"),
@@ -149,6 +155,11 @@ namespace GK2ModInstaller.Core
         public static string BlockedNotLoaded => Get(nameof(BlockedNotLoaded));
         public static string GameFolderUnsubscribed => Get(nameof(GameFolderUnsubscribed));
         public static string UnsubscribedCopyDeleted => Get(nameof(UnsubscribedCopyDeleted));
+        public static string GameFolderDllLoaded => Get(nameof(GameFolderDllLoaded));
+        public static string GameFolderDllAlreadyLoaded => Get(nameof(GameFolderDllAlreadyLoaded));
+        public static string GameFolderDllFailed => Get(nameof(GameFolderDllFailed));
+        public static string GameFolderDllSkipped => Get(nameof(GameFolderDllSkipped));
+        public static string NoteInstallFailed => Get(nameof(NoteInstallFailed));
         public static string TargetGameFolder => Get(nameof(TargetGameFolder));
         public static string TargetPlugins => Get(nameof(TargetPlugins));
         public static string AcfTimeupdated => Get(nameof(AcfTimeupdated));

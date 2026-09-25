@@ -20,7 +20,7 @@ namespace GK2ModInstaller.Tests
         }
 
         [Fact]
-        public void Install_copies_nested_files_and_creates_directories()
+        public void Install_copies_nested_data_files_and_skips_dlls()
         {
             string src = NewDir("gk2gfsrc");
             string game = NewDir("gk2gfgame");
@@ -30,14 +30,40 @@ namespace GK2ModInstaller.Tests
             {
                 Directory.CreateDirectory(Path.Combine(src, "GraveyardKeeper2_Data", "Managed"));
                 File.WriteAllText(Path.Combine(src, "GraveyardKeeper2_Data", "Managed", "Mod.dll"), "DLL");
+                File.WriteAllText(Path.Combine(src, "GraveyardKeeper2_Data", "Managed", "data.bin"), "DATA");
                 Directory.CreateDirectory(Path.Combine(src, "Languages", "l"));
                 File.WriteAllText(Path.Combine(src, "Languages", "l", "language.json"), "{}");
 
                 int n = GameFolderInstaller.Install(src, game, backup, null);
 
                 Assert.Equal(2, n);
-                Assert.Equal("DLL", File.ReadAllText(Path.Combine(game, "GraveyardKeeper2_Data", "Managed", "Mod.dll")));
+                Assert.False(File.Exists(Path.Combine(game, "GraveyardKeeper2_Data", "Managed", "Mod.dll")));
+                Assert.Equal("DATA", File.ReadAllText(Path.Combine(game, "GraveyardKeeper2_Data", "Managed", "data.bin")));
                 Assert.Equal("{}", File.ReadAllText(Path.Combine(game, "Languages", "l", "language.json")));
+            }
+            finally { Del(src); Del(game); Del(backupParent); }
+        }
+
+        [Fact]
+        public void Install_does_not_copy_dlls_from_any_folder()
+        {
+            string src = NewDir("gk2gfsrc");
+            string game = NewDir("gk2gfgame");
+            string backupParent = NewDir("gk2gfbak");
+            string backup = Path.Combine(backupParent, "item");
+            try
+            {
+                File.WriteAllText(Path.Combine(src, "a.dll"), "A");
+                Directory.CreateDirectory(Path.Combine(src, "sub"));
+                File.WriteAllText(Path.Combine(src, "sub", "b.dll"), "B");
+                File.WriteAllText(Path.Combine(src, "keep.txt"), "KEEP");
+
+                int n = GameFolderInstaller.Install(src, game, backup, null);
+
+                Assert.Equal(1, n);
+                Assert.False(File.Exists(Path.Combine(game, "a.dll")));
+                Assert.False(File.Exists(Path.Combine(game, "sub", "b.dll")));
+                Assert.True(File.Exists(Path.Combine(game, "keep.txt")));
             }
             finally { Del(src); Del(game); Del(backupParent); }
         }

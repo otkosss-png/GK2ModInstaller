@@ -20,6 +20,7 @@
     <Compile Include="..\GK2ModInstaller.Core\LoaderDialog.cs" Link="Core\LoaderDialog.cs" />
     <Compile Include="..\GK2ModInstaller.Core\PendingList.cs" Link="Core\PendingList.cs" />
     <Compile Include="..\GK2ModInstaller.Core\GameFolderInstaller.cs" Link="Core\GameFolderInstaller.cs" />
+    <Compile Include="..\GK2ModInstaller.Core\GameFolderDllLoader.cs" Link="Core\GameFolderDllLoader.cs" />
     <Compile Include="..\GK2ModInstaller.Core\LoaderText.cs" Link="Core\LoaderText.cs" />
     <Compile Include="..\GK2ModInstaller.Core\LoaderConfig.cs" Link="Core\LoaderConfig.cs" />
   </ItemGroup>

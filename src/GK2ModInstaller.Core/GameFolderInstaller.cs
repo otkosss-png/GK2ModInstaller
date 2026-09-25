@@ -51,6 +51,15 @@ namespace GK2ModInstaller.Core
                 if (rootLevel && Path.GetFileName(rel).StartsWith("README", StringComparison.OrdinalIgnoreCase))
                     continue;
 
+                // DLL game-folder мода в папку игры не копируем: их грузит загрузчик из айтема
+                // (GameFolderDllLoader). Иначе занятые запущенной игрой файлы мешают обновлению
+                // и откату. Копируем только данные (Languages, текстуры и т.п.). См. §10 спеки.
+                if (rel.EndsWith(".dll", StringComparison.OrdinalIgnoreCase))
+                {
+                    log?.Invoke(string.Format(LoaderText.GameFolderDllSkipped, rel));
+                    continue;
+                }
+
                 try
                 {
                     var target = Path.Combine(gameRoot, rel);

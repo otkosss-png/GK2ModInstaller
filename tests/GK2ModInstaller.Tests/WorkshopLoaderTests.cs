@@ -453,7 +453,7 @@ namespace GK2ModInstaller.Tests
         }
 
         [Fact]
-        public void GameFolder_new_approved_installs_into_game_root_and_is_recorded_in_trust()
+        public void GameFolder_new_approved_copies_data_but_not_dll_and_is_recorded_in_trust()
         {
             string root = MakeWorkshop.Tmp();
             try
@@ -461,12 +461,14 @@ namespace GK2ModInstaller.Tests
                 var options = Options(root);
                 Directory.CreateDirectory(options.WorkshopRoot);
                 MakeWorkshop.GameFolderItem(options.WorkshopRoot, "700", @"GraveyardKeeper2_Data\Managed\Mod.dll", "DLL");
+                MakeWorkshop.GameFolderItem(options.WorkshopRoot, "700", @"Languages\l\language.json", "{}");
 
                 var dialog = new FakeDialog();
                 var summary = WorkshopLoader.Run(options, dialog, null);
 
                 Assert.Equal(new[] { "700" }, dialog.Asked.ToArray());
-                Assert.Equal("DLL", File.ReadAllText(Path.Combine(root, "GraveyardKeeper2_Data", "Managed", "Mod.dll")));
+                Assert.Equal("{}", File.ReadAllText(Path.Combine(root, "Languages", "l", "language.json")));
+                Assert.False(File.Exists(Path.Combine(root, "GraveyardKeeper2_Data", "Managed", "Mod.dll")));
                 var entry = TrustStore.Load(Path.Combine(options.BepInExRoot, "config", WorkshopLoader.TrustFileName), null).Get("700");
                 Assert.Equal(TrustState.Approved, entry.State);
                 Assert.Equal(ModFingerprint.Compute(Path.Combine(options.WorkshopRoot, "700", "CopyToGameFolder")), entry.Sha256);
@@ -559,7 +561,7 @@ namespace GK2ModInstaller.Tests
             {
                 var options = Options(root);
                 Directory.CreateDirectory(options.WorkshopRoot);
-                MakeWorkshop.GameFolderItem(options.WorkshopRoot, "704", @"GraveyardKeeper2_Data\Managed\Mod.dll", "DLL");
+                MakeWorkshop.GameFolderItem(options.WorkshopRoot, "704", @"GraveyardKeeper2_Data\Managed\data.bin", "DATA");
                 string fp = ModFingerprint.Compute(Path.Combine(options.WorkshopRoot, "704", "CopyToGameFolder"));
                 string trust = Path.Combine(options.BepInExRoot, "config", WorkshopLoader.TrustFileName);
                 var store = TrustStore.Load(trust, null);
@@ -570,7 +572,7 @@ namespace GK2ModInstaller.Tests
                 var summary = WorkshopLoader.Run(options, dialog, null);
 
                 Assert.Empty(dialog.Asked);
-                Assert.True(File.Exists(Path.Combine(root, "GraveyardKeeper2_Data", "Managed", "Mod.dll")));
+                Assert.True(File.Exists(Path.Combine(root, "GraveyardKeeper2_Data", "Managed", "data.bin")));
                 Assert.True(File.Exists(MakeWorkshop.BackupManifest(options.BepInExRoot, "704")));
             }
             finally { MakeWorkshop.SafeDelete(root); }

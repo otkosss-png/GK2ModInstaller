@@ -184,6 +184,8 @@ namespace GK2ModInstaller.Core
                     {
                         // Сначала откатываем прошлую установку: бэкап должен хранить истинные оригиналы.
                         GameFolderInstaller.Restore(gameRoot, backupRoot, log);
+                        // DLL грузим в процесс из айтема, а в папку игры кладём только данные.
+                        GameFolderDllLoader.Load(entry.Item.DllFiles, log);
                         int n = GameFolderInstaller.Install(entry.Item.SourceDir, gameRoot, backupRoot, log);
                         log?.Invoke(string.Format(LoaderText.GameFolderInstalledFiles, entry.Item.Id, n));
                     }
@@ -273,6 +275,8 @@ namespace GK2ModInstaller.Core
                             log?.Invoke(string.Format(LoaderText.GameFolderNotDeterminedSkip, entry.Item.Id));
                             break;
                         }
+                        // DLL грузим в процесс при каждом запуске: в папке игры их нет.
+                        GameFolderDllLoader.Load(entry.Item.DllFiles, log);
                         // Уже одобрено: если установки нет (пропал манифест) — восстанавливаем.
                         if (!File.Exists(Path.Combine(backupRoot, GameFolderInstaller.ManifestFileName)))
                         {
