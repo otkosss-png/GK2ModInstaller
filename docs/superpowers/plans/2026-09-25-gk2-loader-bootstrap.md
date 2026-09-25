@@ -183,6 +183,8 @@ git commit -m "feat(core): loader source selector (item copy wins, local fallbac
 
 ### Task 2: Новый проект загрузчика + Entry + тест контракта
 
+> **Примечание (preflight):** задачи 2 и 3 выполняются **одним диспатчем** — после переноса `Win32Dialog.cs` проект патчера не собирается до его переписывания в заглушку (Task 3). Коммиты — по одному на задачу, но дерево должно собираться уже после Task 3.
+
 **Files:**
 - Create: `src/GK2ModInstaller.Loader/GK2ModInstaller.Loader.csproj`, `src/GK2ModInstaller.Loader/Entry.cs`
 - Move: `src/GK2ModInstaller.Patcher/Win32Dialog.cs` → `src/GK2ModInstaller.Loader/Win32Dialog.cs` (namespace `GK2ModInstaller.Loader`)
