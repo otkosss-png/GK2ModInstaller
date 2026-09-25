@@ -3,6 +3,8 @@
 Установщик модов для **Graveyard Keeper 2**: в пару кликов ставит **BepInEx 5.4.23.5 x64** и
 **GK2 Mod Framework** в папку игры (офлайн, архивы вшиты в exe).
 
+Исходники и релизы: https://github.com/otkosss-png/GK2ModInstaller
+
 ## Что делает
 
 - Находит папку игры автоматически (через Steam) или даёт выбрать вручную.
@@ -84,6 +86,7 @@ BepInEx использует `winhttp.dll` (Doorstop) для загрузки в
 
 One-click installer for **Graveyard Keeper 2** mods: installs **BepInEx 5.4.23.5 x64** and
 **GK2 Mod Framework** into the game folder (offline; archives are embedded in the exe).
+Source & releases: https://github.com/otkosss-png/GK2ModInstaller
 
 - Auto-detects the game folder (via Steam) or lets you pick it manually.
 - Installs BepInEx (mod loader) and GK2 Mod Framework (in-game **Mods** menu).
