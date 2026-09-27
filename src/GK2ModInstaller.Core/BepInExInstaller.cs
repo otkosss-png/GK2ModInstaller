@@ -140,14 +140,25 @@ namespace GK2ModInstaller.Core
             return applied;
         }
 
-        public static void Uninstall(string gameDir, Action<string> log)
+        // keepPluginsAndConfigs: удалить только ядро BepInEx (core, patchers, загрузчик),
+        // сохранив папки plugins и config — там лежат моды игрока и их настройки.
+        public static void Uninstall(string gameDir, Action<string> log, bool keepPluginsAndConfigs = false)
         {
             var patcher = Path.Combine(gameDir, BepInExDirName, "patchers", "GK2.WorkshopAutoLoader.dll");
             if (File.Exists(patcher)) { File.Delete(patcher); log?.Invoke("Удалено: patchers\\GK2.WorkshopAutoLoader.dll"); }
             var loader = Path.Combine(gameDir, BepInExDirName, LoaderFileName);
             if (File.Exists(loader)) { File.Delete(loader); log?.Invoke("Удалено: " + LoaderFileName); }
             var bep = Path.Combine(gameDir, BepInExDirName);
-            if (Directory.Exists(bep)) { Directory.Delete(bep, true); log?.Invoke("Удалено: BepInEx\\"); }
+            if (keepPluginsAndConfigs)
+            {
+                foreach (var sub in new[] { "core", "patchers" })
+                {
+                    var p = Path.Combine(bep, sub);
+                    if (Directory.Exists(p)) { Directory.Delete(p, true); log?.Invoke("Удалено: BepInEx\\" + sub); }
+                }
+                log?.Invoke("Оставлено: BepInEx\\plugins, BepInEx\\config");
+            }
+            else if (Directory.Exists(bep)) { Directory.Delete(bep, true); log?.Invoke("Удалено: BepInEx\\"); }
             foreach (var f in BepInExRootFiles)
             {
                 var p = Path.Combine(gameDir, f);

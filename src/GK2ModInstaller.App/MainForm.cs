@@ -15,6 +15,7 @@ namespace GK2ModInstaller.App
         private readonly CheckBox _framework = new CheckBox { Text = "GK2 Mod Framework", Checked = true, AutoSize = true };
         private readonly CheckBox _backup = new CheckBox { Text = "Бэкап существующего BepInEx", AutoSize = true };
         private readonly CheckBox _autoLoader = new CheckBox { Text = "Автозагрузка Workshop-модов", Checked = true, AutoSize = true };
+        private readonly CheckBox _keepPlugins = new CheckBox { Text = "При удалении оставить мои моды и настройки (plugins, config)", Checked = true, AutoSize = true };
         private readonly TextBox _log = new TextBox { Multiline = true, ScrollBars = ScrollBars.Vertical, ReadOnly = true, Height = 160, Width = 520 };
         private readonly ProgressBar _progress = new ProgressBar { Style = ProgressBarStyle.Marquee, Visible = false, Width = 520 };
 
@@ -36,7 +37,7 @@ namespace GK2ModInstaller.App
             var row = new FlowLayoutPanel { AutoSize = true };
             row.Controls.AddRange(new Control[] { _gameDir, browse, _status });
             var checks = new FlowLayoutPanel { AutoSize = true };
-            checks.Controls.AddRange(new Control[] { _bepinex, _framework, _autoLoader, _backup });
+            checks.Controls.AddRange(new Control[] { _bepinex, _framework, _autoLoader, _backup, _keepPlugins });
             var buttons = new FlowLayoutPanel { AutoSize = true };
             buttons.Controls.AddRange(new Control[] { install, uninstall });
 
@@ -115,8 +116,21 @@ namespace GK2ModInstaller.App
 
         private void DoUninstall()
         {
-            if (MessageBox.Show(this, "Удалить BepInEx и фреймворк?", "Подтверждение", MessageBoxButtons.YesNo) != DialogResult.Yes) return;
-            try { BepInExInstaller.Uninstall(_gameDir.Text, AppendLog); AppendLog("Удалено."); }
+            bool keep = _keepPlugins.Checked;
+            string msg =
+                "Удалить BepInEx?" + Environment.NewLine + Environment.NewLine +
+                "Будет удалено ядро BepInEx (core), patchers, загрузчик и файлы в папке игры "
+                + "(winhttp.dll, doorstop_config.ini)." + Environment.NewLine + Environment.NewLine +
+                (keep
+                    ? "Папки BepInEx\\plugins и BepInEx\\config СОХРАНЯЮТСЯ — ваши моды и настройки останутся на месте."
+                    : "ВНИМАНИЕ: вместе с BepInEx удаляются ВСЕ плагины (BepInEx\\plugins) и их настройки "
+                      + "(BepInEx\\config) — включая моды, поставленные вручную." + Environment.NewLine + Environment.NewLine
+                      + "Совет: включите галочку «При удалении оставить мои моды и настройки», если не хотите их потерять.") +
+                Environment.NewLine + Environment.NewLine + "Продолжить?";
+
+            var caption = keep ? "Удаление BepInEx (моды сохраняются)" : "Удаление BepInEx — будут удалены ВСЕ плагины";
+            if (MessageBox.Show(this, msg, caption, MessageBoxButtons.YesNo, MessageBoxIcon.Warning) != DialogResult.Yes) return;
+            try { BepInExInstaller.Uninstall(_gameDir.Text, AppendLog, keep); AppendLog("Удалено."); }
             catch (Exception ex) { AppendLog("Ошибка: " + ex.Message); }
         }
     }

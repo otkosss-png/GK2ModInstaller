@@ -13,6 +13,8 @@ internal static class Program
         string mode = "create", folder = null, title = null, desc = null, descFile = null, tags = null, preview = null;
         ulong updateId = 0, deleteId = 0;
         bool pub = false;
+        var screenshots = new List<string>();
+        var replaces = new List<KeyValuePair<uint, string>>();
 
         for (int i = 0; i < args.Length; i++)
         {
@@ -26,6 +28,8 @@ internal static class Program
                 case "--desc-file": descFile = args[++i]; break;
                 case "--tags": tags = args[++i]; break;
                 case "--preview": preview = args[++i]; break;
+                case "--screenshot": screenshots.Add(args[++i]); break;
+                case "--replace": { uint idx = uint.Parse(args[++i]); string file = args[++i]; replaces.Add(new KeyValuePair<uint, string>(idx, file)); break; }
                 case "--public": pub = true; break;
             }
         }
@@ -39,8 +43,8 @@ internal static class Program
         Console.WriteLine("Steam user: " + SteamFriends.GetPersonaName());
 
         if (mode == "delete") return DoDelete(deleteId);
-        if (mode == "update") return DoUpdate(updateId, folder, title, desc, tags, preview, pub);
-        return DoCreate(folder, title, desc, tags, pub);
+        if (mode == "update") return DoUpdate(updateId, folder, title, desc, tags, preview, screenshots, replaces, pub);
+        return DoCreate(folder, title, desc, tags, screenshots, pub);
     }
 
     private static int DoDelete(ulong id)
@@ -54,7 +58,7 @@ internal static class Program
         return r.m_eResult == EResult.k_EResultOK ? 0 : 5;
     }
 
-    private static int DoCreate(string folder, string title, string desc, string tags, bool pub)
+    private static int DoCreate(string folder, string title, string desc, string tags, List<string> screenshots, bool pub)
     {
         if (folder == null || title == null) { Console.WriteLine("create needs --folder and --title"); return 2; }
 
@@ -76,10 +80,11 @@ internal static class Program
             ? ERemoteStoragePublishedFileVisibility.k_ERemoteStoragePublishedFileVisibilityPublic
             : ERemoteStoragePublishedFileVisibility.k_ERemoteStoragePublishedFileVisibilityUnlisted);
         if (!string.IsNullOrEmpty(tags)) SteamUGC.SetItemTags(handle, new List<string>(tags.Split(',')));
+        AddScreenshots(handle, screenshots);
         return Submit(handle, id.m_PublishedFileId);
     }
 
-    private static int DoUpdate(ulong id, string folder, string title, string desc, string tags, string preview, bool pub)
+    private static int DoUpdate(ulong id, string folder, string title, string desc, string tags, string preview, List<string> screenshots, List<KeyValuePair<uint, string>> replaces, bool pub)
     {
         var handle = SteamUGC.StartItemUpdate(new AppId_t(AppId), new PublishedFileId_t(id));
         if (title != null) SteamUGC.SetItemTitle(handle, title);
@@ -88,8 +93,25 @@ internal static class Program
         if (!string.IsNullOrEmpty(folder)) Console.WriteLine("SetItemContent=" + SteamUGC.SetItemContent(handle, Path.GetFullPath(folder)));
         if (preview != null) Console.WriteLine("SetItemPreview=" + SteamUGC.SetItemPreview(handle, Path.GetFullPath(preview)));
         if (pub) SteamUGC.SetItemVisibility(handle, ERemoteStoragePublishedFileVisibility.k_ERemoteStoragePublishedFileVisibilityPublic);
+        AddScreenshots(handle, screenshots);
+        if (replaces != null)
+            foreach (var kv in replaces)
+            {
+                if (!File.Exists(kv.Value)) { Console.WriteLine("replace missing: " + kv.Value); continue; }
+                Console.WriteLine("UpdateItemPreviewFile[" + kv.Key + "]=" + SteamUGC.UpdateItemPreviewFile(handle, kv.Key, Path.GetFullPath(kv.Value)) + " " + Path.GetFileName(kv.Value));
+            }
         Console.WriteLine("updating item " + id);
         return Submit(handle, id);
+    }
+
+    private static void AddScreenshots(UGCUpdateHandle_t handle, List<string> screenshots)
+    {
+        if (screenshots == null) return;
+        foreach (var s in screenshots)
+        {
+            if (!File.Exists(s)) { Console.WriteLine("screenshot missing: " + s); continue; }
+            Console.WriteLine("AddItemPreviewFile=" + SteamUGC.AddItemPreviewFile(handle, Path.GetFullPath(s), EItemPreviewType.k_EItemPreviewType_Image) + " " + Path.GetFileName(s));
+        }
     }
 
     private static int Submit(UGCUpdateHandle_t handle, ulong id)

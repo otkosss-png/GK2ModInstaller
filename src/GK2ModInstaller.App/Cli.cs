@@ -18,10 +18,11 @@ namespace GK2ModInstaller.App
 
             if (!GameLocator.ValidateGameDir(gameDir)) { log("Неверная папка игры."); return; }
 
-            if (mode == "--uninstall")
+            if (mode == "--uninstall" || mode == "--uninstall-keep")
             {
-                BepInExInstaller.Uninstall(gameDir, log);
-                log("OK: удалено.");
+                bool keep = mode == "--uninstall-keep";
+                BepInExInstaller.Uninstall(gameDir, log, keep);
+                log(keep ? "OK: ядро удалено, plugins и config сохранены." : "OK: удалено.");
                 return;
             }
 

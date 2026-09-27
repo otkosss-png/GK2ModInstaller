@@ -10,7 +10,7 @@ namespace GK2ModInstaller.App
         [STAThread]
         private static void Main(string[] args)
         {
-            if (args.Length >= 2 && (args[0] == "--install" || args[0] == "--uninstall"))
+            if (args.Length >= 2 && (args[0] == "--install" || args[0] == "--uninstall" || args[0] == "--uninstall-keep"))
             {
                 Cli.Run(args[0], args[1]);
                 return;

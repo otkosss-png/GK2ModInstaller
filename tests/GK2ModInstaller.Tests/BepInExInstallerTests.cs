@@ -79,6 +79,33 @@ namespace GK2ModInstaller.Tests
         }
 
         [Fact]
+        public void Uninstall_keep_plugins_keeps_plugins_and_configs()
+        {
+            string dir = Path.Combine(Path.GetTempPath(), "gk2un_" + Guid.NewGuid().ToString("N"));
+            Directory.CreateDirectory(Path.Combine(dir, "BepInEx", "core"));
+            Directory.CreateDirectory(Path.Combine(dir, "BepInEx", "patchers"));
+            Directory.CreateDirectory(Path.Combine(dir, "BepInEx", "plugins"));
+            Directory.CreateDirectory(Path.Combine(dir, "BepInEx", "config"));
+            File.WriteAllText(Path.Combine(dir, "BepInEx", "core", "BepInEx.dll"), "x");
+            File.WriteAllText(Path.Combine(dir, "BepInEx", "patchers", "GK2.WorkshopAutoLoader.dll"), "x");
+            File.WriteAllText(Path.Combine(dir, "BepInEx", "GK2.WorkshopLoader.dll"), "x");
+            File.WriteAllText(Path.Combine(dir, "BepInEx", "plugins", "MyMod.dll"), "keep");
+            File.WriteAllText(Path.Combine(dir, "BepInEx", "config", "MyMod.cfg"), "keep");
+            File.WriteAllText(Path.Combine(dir, "winhttp.dll"), "x");
+            try
+            {
+                BepInExInstaller.Uninstall(dir, null, keepPluginsAndConfigs: true);
+                Assert.True(File.Exists(Path.Combine(dir, "BepInEx", "plugins", "MyMod.dll")));
+                Assert.True(File.Exists(Path.Combine(dir, "BepInEx", "config", "MyMod.cfg")));
+                Assert.False(Directory.Exists(Path.Combine(dir, "BepInEx", "core")));
+                Assert.False(Directory.Exists(Path.Combine(dir, "BepInEx", "patchers")));
+                Assert.False(File.Exists(Path.Combine(dir, "BepInEx", "GK2.WorkshopLoader.dll")));
+                Assert.False(File.Exists(Path.Combine(dir, "winhttp.dll")));
+            }
+            finally { Directory.Delete(dir, true); }
+        }
+
+        [Fact]
         public void Install_writes_loader_fallback_next_to_bepinex()
         {
             string dir = Path.Combine(Path.GetTempPath(), "gk2inst_" + Guid.NewGuid().ToString("N"));
