@@ -186,8 +186,8 @@ namespace GK2ModInstaller.Core
                     {
                         // Сначала откатываем прошлую установку: бэкап должен хранить истинные оригиналы.
                         GameFolderInstaller.Restore(gameRoot, backupRoot, log);
-                        // DLL грузим в процесс из айтема, а в папку игры кладём только данные.
-                        GameFolderDllLoader.Load(entry.Item.DllFiles, log);
+                        // DLL грузим в процесс из айтема, а в папку игры кладём данные и плагины BepInEx.
+                        GameFolderDllLoader.Load(GameFolderInstaller.InProcessDlls(entry.Item.SourceDir, entry.Item.DllFiles), log);
                         int failed;
                         int n = GameFolderInstaller.Install(entry.Item.SourceDir, gameRoot, backupRoot, log, out failed);
                         installFailed = failed > 0;
@@ -313,11 +313,15 @@ namespace GK2ModInstaller.Core
                             log?.Invoke(string.Format(LoaderText.GameFolderNotDeterminedSkip, entry.Item.Id));
                             break;
                         }
-                        // DLL грузим в процесс при каждом запуске: в папке игры их нет.
-                        GameFolderDllLoader.Load(entry.Item.DllFiles, log);
-                        // Уже одобрено: если установки нет (пропал манифест) — восстанавливаем.
-                        if (!File.Exists(Path.Combine(backupRoot, GameFolderInstaller.ManifestFileName)))
+                        // DLL грузим в процесс при каждом запуске: в папке игры их нет
+                        // (кроме плагинов BepInEx — их копирует установка).
+                        GameFolderDllLoader.Load(GameFolderInstaller.InProcessDlls(entry.Item.SourceDir, entry.Item.DllFiles), log);
+                        // Уже одобрено: если установки нет (пропал манифест) или она неполная (нет DLL
+                        // плагина — ставила старая версия загрузчика) — переустанавливаем.
+                        bool noManifest = !File.Exists(Path.Combine(backupRoot, GameFolderInstaller.ManifestFileName));
+                        if (noManifest || GameFolderInstaller.HasMissingPluginFiles(entry.Item.SourceDir, gameRoot))
                         {
+                            if (!noManifest) GameFolderInstaller.Restore(gameRoot, backupRoot, log);
                             int n = GameFolderInstaller.Install(entry.Item.SourceDir, gameRoot, backupRoot, log);
                             log?.Invoke(string.Format(LoaderText.GameFolderRestoredInstall, entry.Item.Id, n));
                         }
@@ -382,6 +386,8 @@ namespace GK2ModInstaller.Core
                 try { rel = dll.Substring(item.SourceDir.Length).TrimStart('\\', '/'); }
                 catch { continue; }
                 if (string.IsNullOrEmpty(rel)) continue;
+                // Плагины BepInEx — это текущая установка, а не legacy-копия: не удаляем.
+                if (GameFolderInstaller.IsBepInExPluginFile(rel)) continue;
                 if (!File.Exists(Path.Combine(gameRoot, rel))) continue;
                 PendingGameActions.Add(pendingGamePath,
                     new PendingGameAction { Kind = PendingGameAction.DeleteKind, Rel = rel }, log);

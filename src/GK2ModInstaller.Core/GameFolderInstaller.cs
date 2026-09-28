@@ -64,7 +64,9 @@ namespace GK2ModInstaller.Core
                 // DLL game-folder мода в папку игры не копируем: их грузит загрузчик из айтема
                 // (GameFolderDllLoader). Иначе занятые запущенной игрой файлы мешают обновлению
                 // и откату. Копируем только данные (Languages, текстуры и т.п.). См. §10 спеки.
-                if (rel.EndsWith(".dll", StringComparison.OrdinalIgnoreCase))
+                // Исключение — BepInEx\plugins\...: плагины BepInEx создаёт только из файлов
+                // в plugins, а загрузчик работает раньше него, так что файлы ещё не заняты.
+                if (rel.EndsWith(".dll", StringComparison.OrdinalIgnoreCase) && !IsBepInExPluginFile(rel))
                 {
                     log?.Invoke(string.Format(LoaderText.GameFolderDllSkipped, rel));
                     continue;
@@ -96,6 +98,57 @@ namespace GK2ModInstaller.Core
                 }
             }
             return copied;
+        }
+
+        private const string PluginsPrefix = "BepInEx\\plugins\\";
+
+        // Файл game-folder мода, который ложится в BepInEx\plugins (путь относительно папки игры).
+        // Такие DLL копируются как обычные плагины и НЕ грузятся загрузчиком в процесс
+        // (GK2DailyReminder кладёт свой плагин-загрузчик в CopyToGameFolder\BepInEx\plugins).
+        public static bool IsBepInExPluginFile(string rel)
+        {
+            if (string.IsNullOrEmpty(rel)) return false;
+            var norm = rel.Replace('/', '\\').TrimStart('\\');
+            return norm.StartsWith(PluginsPrefix, StringComparison.OrdinalIgnoreCase);
+        }
+
+        // DLL, которые загрузчик грузит в процесс из айтема: все, кроме плагинов BepInEx.
+        public static List<string> InProcessDlls(string sourceDir, IEnumerable<string> dlls)
+        {
+            var list = new List<string>();
+            if (dlls == null) return list;
+            foreach (var dll in dlls)
+            {
+                if (string.IsNullOrEmpty(dll)) continue;
+                if (IsBepInExPluginFile(RelativeTo(sourceDir, dll))) continue;
+                list.Add(dll);
+            }
+            return list;
+        }
+
+        // Есть ли в айтеме файл плагина BepInEx, которого нет в папке игры (установка неполная —
+        // например, её делала старая версия загрузчика, не копировавшая DLL плагинов).
+        public static bool HasMissingPluginFiles(string sourceDir, string gameRoot)
+        {
+            try
+            {
+                if (string.IsNullOrEmpty(sourceDir) || string.IsNullOrEmpty(gameRoot) || !Directory.Exists(sourceDir)) return false;
+                foreach (var src in Directory.GetFiles(sourceDir, "*", SearchOption.AllDirectories))
+                {
+                    var rel = RelativeTo(sourceDir, src);
+                    if (IsBepInExPluginFile(rel) && !File.Exists(Path.Combine(gameRoot, rel))) return true;
+                }
+            }
+            catch { }
+            return false;
+        }
+
+        private static string RelativeTo(string root, string path)
+        {
+            if (string.IsNullOrEmpty(root) || string.IsNullOrEmpty(path)) return path;
+            return path.StartsWith(root, StringComparison.OrdinalIgnoreCase)
+                ? path.Substring(root.Length).TrimStart('\\', '/').Replace('/', '\\')
+                : path;
         }
 
         // Возвращает папку игры в состояние до установки по манифесту, затем удаляет бэкап.

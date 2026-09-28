@@ -17,6 +17,9 @@
   версии (диалоги, языки, проверки) приезжают подпиской; после разовой установки копировать
   ничего не нужно. Моды «в папку игры» с v1.3.0 грузятся в процесс из айтема (в `Managed` их код
   не копируется), а отложенные операции из `pendinggame.txt` применяет установщик.
+  Исключение (v1.3.1): плагины BepInEx внутри `CopyToGameFolder\BepInEx\plugins\...` (например,
+  GK2 Daily Reminder) копируются в `BepInEx\plugins` как обычные плагины — BepInEx запускает
+  плагины только оттуда. Неполные установки прежних версий загрузчик доделывает сам.
 - **Согласие на моды (v1.2.0):** ничего не запускается без вашего подтверждения — диалог
   Yes/No/Cancel для новых модов и обновлений, предупреждения код-чека и дубликатов.
 - **Моды в папку игры (v1.2.0):** если в айтеме лежит `CopyToGameFolder` (или `GraveyardKeeper2_Data`
@@ -103,6 +106,9 @@ Source & releases: https://github.com/otkosss-png/GK2ModInstaller
   languages, checks) arrive with your subscription — nothing to re-copy after the one-time install.
   Since v1.3.0 game-folder mods load in-process from the item (their code is no longer copied into
   `Managed`), and deferred operations in `pendinggame.txt` are applied by the installer.
+  Exception (v1.3.1): BepInEx plugins inside `CopyToGameFolder\BepInEx\plugins\...` (e.g. GK2 Daily
+  Reminder) are copied into `BepInEx\plugins` like normal plugins — BepInEx only starts plugins
+  from there. Incomplete installs made by older loader versions are completed automatically.
 - **Mod consent (v1.2.0):** nothing runs without your approval — a Yes/No/Cancel dialog for new
   mods and updates, plus code-check and duplicate warnings. Decisions live in
   `BepInEx\config\GK2_WorkshopLoader.trust.txt` (delete a line to be asked again); postponed mods

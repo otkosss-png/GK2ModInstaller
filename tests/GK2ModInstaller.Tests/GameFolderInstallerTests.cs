@@ -68,6 +68,84 @@ namespace GK2ModInstaller.Tests
             finally { Del(src); Del(game); Del(backupParent); }
         }
 
+        // CopyToGameFolder\BepInEx\plugins\... (напр. GK2DailyReminder): BepInEx создаёт плагины только
+        // из файлов в plugins — такие DLL надо копировать, загрузка в процесс их не запустит.
+        [Fact]
+        public void Install_copies_bepinex_plugin_dlls_and_restore_removes_them()
+        {
+            string src = NewDir("gk2gfsrc");
+            string game = NewDir("gk2gfgame");
+            string backupParent = NewDir("gk2gfbak");
+            string backup = Path.Combine(backupParent, "item");
+            try
+            {
+                var pluginDir = Path.Combine(src, "BepInEx", "plugins", "Mod");
+                Directory.CreateDirectory(pluginDir);
+                File.WriteAllText(Path.Combine(pluginDir, "Mod.dll"), "DLL");
+                File.WriteAllText(Path.Combine(pluginDir, "texts.txt"), "T");
+                Directory.CreateDirectory(Path.Combine(src, "GraveyardKeeper2_Data", "Managed"));
+                File.WriteAllText(Path.Combine(src, "GraveyardKeeper2_Data", "Managed", "Other.dll"), "X");
+
+                int n = GameFolderInstaller.Install(src, game, backup, null);
+
+                Assert.Equal(2, n);
+                Assert.Equal("DLL", File.ReadAllText(Path.Combine(game, "BepInEx", "plugins", "Mod", "Mod.dll")));
+                Assert.False(File.Exists(Path.Combine(game, "GraveyardKeeper2_Data", "Managed", "Other.dll")));
+                Assert.Contains("BepInEx\\plugins\\Mod\\Mod.dll|0", File.ReadAllText(Path.Combine(backup, "manifest.txt")));
+
+                GameFolderInstaller.Restore(game, backup, null);
+                Assert.False(File.Exists(Path.Combine(game, "BepInEx", "plugins", "Mod", "Mod.dll")));
+            }
+            finally { Del(src); Del(game); Del(backupParent); }
+        }
+
+        [Fact]
+        public void Plugin_file_rule_matches_only_bepinex_plugins()
+        {
+            Assert.True(GameFolderInstaller.IsBepInExPluginFile("BepInEx\\plugins\\Mod\\Mod.dll"));
+            Assert.True(GameFolderInstaller.IsBepInExPluginFile("bepinex/Plugins/Mod.dll"));
+            Assert.False(GameFolderInstaller.IsBepInExPluginFile("GraveyardKeeper2_Data\\Managed\\Mod.dll"));
+            Assert.False(GameFolderInstaller.IsBepInExPluginFile("BepInEx\\patchers\\P.dll"));
+            Assert.False(GameFolderInstaller.IsBepInExPluginFile(null));
+        }
+
+        [Fact]
+        public void In_process_dlls_exclude_bepinex_plugins()
+        {
+            string src = NewDir("gk2gfsrc");
+            try
+            {
+                var plugin = Path.Combine(src, "BepInEx", "plugins", "Mod", "Mod.dll");
+                var managed = Path.Combine(src, "GraveyardKeeper2_Data", "Managed", "Other.dll");
+                var list = GameFolderInstaller.InProcessDlls(src, new[] { plugin, managed });
+                Assert.Equal(new[] { managed }, list);
+            }
+            finally { Del(src); }
+        }
+
+        [Fact]
+        public void Missing_plugin_file_in_game_needs_reinstall()
+        {
+            string src = NewDir("gk2gfsrc");
+            string game = NewDir("gk2gfgame");
+            try
+            {
+                var pluginDir = Path.Combine(src, "BepInEx", "plugins", "Mod");
+                Directory.CreateDirectory(pluginDir);
+                File.WriteAllText(Path.Combine(pluginDir, "Mod.dll"), "DLL");
+                Directory.CreateDirectory(Path.Combine(src, "Languages"));
+                File.WriteAllText(Path.Combine(src, "Languages", "l.json"), "{}");
+
+                Assert.True(GameFolderInstaller.HasMissingPluginFiles(src, game));
+
+                Directory.CreateDirectory(Path.Combine(game, "BepInEx", "plugins", "Mod"));
+                File.WriteAllText(Path.Combine(game, "BepInEx", "plugins", "Mod", "Mod.dll"), "DLL");
+                // Отсутствие данных (Languages) — не повод: проверяются только файлы плагинов.
+                Assert.False(GameFolderInstaller.HasMissingPluginFiles(src, game));
+            }
+            finally { Del(src); Del(game); }
+        }
+
         [Fact]
         public void Existing_target_is_backed_up_and_manifest_records_1()
         {
