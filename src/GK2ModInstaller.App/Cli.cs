@@ -16,13 +16,13 @@ namespace GK2ModInstaller.App
             };
             try { File.WriteAllText(logPath, "GK2ModInstaller CLI " + mode + " -> " + gameDir + Environment.NewLine); } catch { }
 
-            if (!GameLocator.ValidateGameDir(gameDir)) { log("Неверная папка игры."); return; }
+            if (!GameLocator.ValidateGameDir(gameDir)) { log(LoaderText.Get("InstBadFolder")); return; }
 
             if (mode == "--uninstall" || mode == "--uninstall-keep")
             {
                 bool keep = mode == "--uninstall-keep";
                 BepInExInstaller.Uninstall(gameDir, log, keep);
-                log(keep ? "OK: ядро удалено, plugins и config сохранены." : "OK: удалено.");
+                log(LoaderText.Get(keep ? "InstCliRemovedKeep" : "InstCliRemoved"));
                 return;
             }
 
@@ -33,8 +33,8 @@ namespace GK2ModInstaller.App
                 BepInExInstaller.Install(gameDir, bep, fw, patcher, loader, false, log);
 
             var problems = BepInExInstaller.Verify(gameDir, true);
-            foreach (var p in problems) log("Проблема: " + p);
-            if (problems.Count == 0) log("OK: установлено в " + gameDir);
+            foreach (var p in problems) log(LoaderText.Get("InstProblem") + p);
+            if (problems.Count == 0) log(LoaderText.Get("InstCliInstalledTo") + gameDir);
         }
 
         private static Stream Open(string name)

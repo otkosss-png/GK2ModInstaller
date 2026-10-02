@@ -10,6 +10,17 @@ namespace GK2ModInstaller.App
         [STAThread]
         private static void Main(string[] args)
         {
+            // English by default, Russian on a Russian Windows; "--lang en|ru" forces it.
+            GK2ModInstaller.Core.LoaderText.AutoDetect();
+            int langAt = Array.IndexOf(args, "--lang");
+            if (langAt >= 0 && langAt + 1 < args.Length)
+            {
+                GK2ModInstaller.Core.LoaderText.Language = GK2ModInstaller.Core.LoaderText.DetectFor(args[langAt + 1]);
+                var rest = new System.Collections.Generic.List<string>(args);
+                rest.RemoveRange(langAt, 2);
+                args = rest.ToArray();
+            }
+
             if (args.Length >= 2 && (args[0] == "--install" || args[0] == "--uninstall" || args[0] == "--uninstall-keep"))
             {
                 Cli.Run(args[0], args[1]);

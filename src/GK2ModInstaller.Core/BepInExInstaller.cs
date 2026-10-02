@@ -25,19 +25,20 @@ namespace GK2ModInstaller.Core
             var problems = new List<string>();
             if (string.IsNullOrWhiteSpace(gameDir) || !Directory.Exists(gameDir))
             {
-                problems.Add("Папка игры не найдена.");
+                problems.Add(LoaderText.Get("InstVerifyNoFolder"));
                 return problems;
             }
-            if (!File.Exists(Path.Combine(gameDir, "winhttp.dll"))) problems.Add("нет winhttp.dll");
-            if (!File.Exists(Path.Combine(gameDir, "doorstop_config.ini"))) problems.Add("нет doorstop_config.ini");
+            var missing = LoaderText.Get("InstVerifyMissing");
+            if (!File.Exists(Path.Combine(gameDir, "winhttp.dll"))) problems.Add(missing + "winhttp.dll");
+            if (!File.Exists(Path.Combine(gameDir, "doorstop_config.ini"))) problems.Add(missing + "doorstop_config.ini");
             var core = Path.Combine(gameDir, BepInExDirName, "core");
-            if (!Directory.Exists(core) || Directory.GetFiles(core).Length == 0) problems.Add("пусто BepInEx/core");
+            if (!Directory.Exists(core) || Directory.GetFiles(core).Length == 0) problems.Add(LoaderText.Get("InstVerifyEmptyCore"));
             if (!File.Exists(Path.Combine(gameDir, BepInExDirName, "plugins", "GK2.Framework.dll")))
-                problems.Add("нет GK2.Framework.dll");
+                problems.Add(missing + "GK2.Framework.dll");
             if (expectPatcher && !File.Exists(Path.Combine(gameDir, BepInExDirName, "patchers", "GK2.WorkshopAutoLoader.dll")))
-                problems.Add("нет GK2.WorkshopAutoLoader.dll");
+                problems.Add(missing + "GK2.WorkshopAutoLoader.dll");
             if (expectPatcher && !File.Exists(Path.Combine(gameDir, BepInExDirName, LoaderFileName)))
-                problems.Add("Нет " + Path.Combine(BepInExDirName, LoaderFileName) + " (офлайн-копия загрузчика)");
+                problems.Add(missing + Path.Combine(BepInExDirName, LoaderFileName) + LoaderText.Get("InstVerifyOfflineLoader"));
             return problems;
         }
 
@@ -52,19 +53,19 @@ namespace GK2ModInstaller.Core
                 if (Directory.Exists(bep))
                 {
                     var bak = Path.Combine(gameDir, BepInExDirName + "_backup_" + DateTime.Now.ToString("yyyyMMdd_HHmmss"));
-                    log?.Invoke("Бэкап BepInEx -> " + Path.GetFileName(bak));
+                    log?.Invoke(LoaderText.Get("InstLogBackup") +Path.GetFileName(bak));
                     CopyDir(bep, bak);
                 }
             }
 
             if (bepinexZip != null)
             {
-                log?.Invoke("Распаковка BepInEx…");
+                log?.Invoke(LoaderText.Get("InstLogUnpackBepInEx"));
                 ZipExtractor.ExtractTo(bepinexZip, gameDir);
             }
             if (frameworkZip != null)
             {
-                log?.Invoke("Распаковка GK2 Mod Framework…");
+                log?.Invoke(LoaderText.Get("InstLogUnpackFramework"));
                 ZipExtractor.ExtractTo(frameworkZip, gameDir);
             }
             if (patcherDll != null)
@@ -72,7 +73,7 @@ namespace GK2ModInstaller.Core
                 var patchersDir = Path.Combine(gameDir, BepInExDirName, "patchers");
                 Directory.CreateDirectory(patchersDir);
                 var dst = Path.Combine(patchersDir, "GK2.WorkshopAutoLoader.dll");
-                log?.Invoke("Патчер автозагрузки -> " + dst);
+                log?.Invoke(LoaderText.Get("InstLogPatcher") + dst);
                 using (var fs = File.Create(dst)) patcherDll.CopyTo(fs);
             }
             if (loaderDll != null)
@@ -80,7 +81,7 @@ namespace GK2ModInstaller.Core
                 var loaderPath = Path.Combine(gameDir, BepInExDirName, LoaderFileName);
                 Directory.CreateDirectory(Path.GetDirectoryName(loaderPath));
                 using (var fs = File.Create(loaderPath)) loaderDll.CopyTo(fs);
-                log?.Invoke("Загрузчик: " + Path.Combine(BepInExDirName, LoaderFileName));
+                log?.Invoke(LoaderText.Get("InstLogLoader") +Path.Combine(BepInExDirName, LoaderFileName));
             }
 
             // Инсталлятор запускается при закрытой игре — самое время применить отложенные
@@ -145,24 +146,25 @@ namespace GK2ModInstaller.Core
         public static void Uninstall(string gameDir, Action<string> log, bool keepPluginsAndConfigs = false)
         {
             var patcher = Path.Combine(gameDir, BepInExDirName, "patchers", "GK2.WorkshopAutoLoader.dll");
-            if (File.Exists(patcher)) { File.Delete(patcher); log?.Invoke("Удалено: patchers\\GK2.WorkshopAutoLoader.dll"); }
+            var deleted = LoaderText.Get("InstLogDeleted");
+            if (File.Exists(patcher)) { File.Delete(patcher); log?.Invoke(deleted + "patchers\\GK2.WorkshopAutoLoader.dll"); }
             var loader = Path.Combine(gameDir, BepInExDirName, LoaderFileName);
-            if (File.Exists(loader)) { File.Delete(loader); log?.Invoke("Удалено: " + LoaderFileName); }
+            if (File.Exists(loader)) { File.Delete(loader); log?.Invoke(deleted + LoaderFileName); }
             var bep = Path.Combine(gameDir, BepInExDirName);
             if (keepPluginsAndConfigs)
             {
                 foreach (var sub in new[] { "core", "patchers" })
                 {
                     var p = Path.Combine(bep, sub);
-                    if (Directory.Exists(p)) { Directory.Delete(p, true); log?.Invoke("Удалено: BepInEx\\" + sub); }
+                    if (Directory.Exists(p)) { Directory.Delete(p, true); log?.Invoke(deleted + "BepInEx\\" + sub); }
                 }
-                log?.Invoke("Оставлено: BepInEx\\plugins, BepInEx\\config");
+                log?.Invoke(LoaderText.Get("InstLogKept"));
             }
-            else if (Directory.Exists(bep)) { Directory.Delete(bep, true); log?.Invoke("Удалено: BepInEx\\"); }
+            else if (Directory.Exists(bep)) { Directory.Delete(bep, true); log?.Invoke(deleted + "BepInEx\\"); }
             foreach (var f in BepInExRootFiles)
             {
                 var p = Path.Combine(gameDir, f);
-                if (File.Exists(p)) { File.Delete(p); log?.Invoke("Удалено: " + f); }
+                if (File.Exists(p)) { File.Delete(p); log?.Invoke(deleted + f); }
             }
         }
 

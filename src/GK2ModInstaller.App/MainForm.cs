@@ -9,31 +9,33 @@ namespace GK2ModInstaller.App
 {
     public sealed class MainForm : Form
     {
+        private static string T(string key) => LoaderText.Get(key);
+
         private readonly TextBox _gameDir = new TextBox { Width = 420, ReadOnly = true };
         private readonly Label _status = new Label { AutoSize = true };
         private readonly CheckBox _bepinex = new CheckBox { Text = "BepInEx 5.4.23.5", Checked = true, AutoSize = true };
         private readonly CheckBox _framework = new CheckBox { Text = "GK2 Mod Framework", Checked = true, AutoSize = true };
-        private readonly CheckBox _backup = new CheckBox { Text = "Бэкап существующего BepInEx", AutoSize = true };
-        private readonly CheckBox _autoLoader = new CheckBox { Text = "Автозагрузка Workshop-модов", Checked = true, AutoSize = true };
-        private readonly CheckBox _keepPlugins = new CheckBox { Text = "При удалении оставить мои моды и настройки (plugins, config)", Checked = true, AutoSize = true };
+        private readonly CheckBox _backup = new CheckBox { Text = T("InstBackup"), AutoSize = true };
+        private readonly CheckBox _autoLoader = new CheckBox { Text = T("InstAutoLoader"), Checked = true, AutoSize = true };
+        private readonly CheckBox _keepPlugins = new CheckBox { Text = T("InstKeepPlugins"), Checked = true, AutoSize = true };
         private readonly TextBox _log = new TextBox { Multiline = true, ScrollBars = ScrollBars.Vertical, ReadOnly = true, Height = 160, Width = 520 };
         private readonly ProgressBar _progress = new ProgressBar { Style = ProgressBarStyle.Marquee, Visible = false, Width = 520 };
 
         public MainForm()
         {
-            Text = "Graveyard Keeper 2 — установка модов";
+            Text = T("InstTitle");
             Width = 560; Height = 420; FormBorderStyle = FormBorderStyle.FixedDialog; MaximizeBox = false;
 
-            var browse = new Button { Text = "Обзор…", Width = 80 };
+            var browse = new Button { Text = T("InstBrowse"), Width = 80 };
             browse.Click += (s, e) => Browse();
 
-            var install = new Button { Text = "Установить", Width = 140, Height = 32 };
+            var install = new Button { Text = T("InstInstall"), Width = 140, Height = 32 };
             install.Click += (s, e) => DoInstall();
 
-            var uninstall = new Button { Text = "Удалить BepInEx", Width = 140, Height = 32 };
+            var uninstall = new Button { Text = T("InstUninstall"), Width = 140, Height = 32 };
             uninstall.Click += (s, e) => DoUninstall();
 
-            var l1 = new Label { Text = "Папка игры:", AutoSize = true };
+            var l1 = new Label { Text = T("InstGameFolder"), AutoSize = true };
             var row = new FlowLayoutPanel { AutoSize = true };
             row.Controls.AddRange(new Control[] { _gameDir, browse, _status });
             var checks = new FlowLayoutPanel { AutoSize = true };
@@ -74,7 +76,7 @@ namespace GK2ModInstaller.App
 
         private void SetStatus(bool ok)
         {
-            _status.Text = ok ? "✓ папка игры найдена" : "✗ укажите папку игры";
+            _status.Text = ok ? T("InstFolderFound") : T("InstFolderMissing");
             _status.ForeColor = ok ? System.Drawing.Color.Green : System.Drawing.Color.Firebrick;
         }
 
@@ -96,42 +98,38 @@ namespace GK2ModInstaller.App
         private void DoInstall()
         {
             string dir = _gameDir.Text;
-            if (!GameLocator.ValidateGameDir(dir)) { MessageBox.Show(this, "Неверная папка игры."); return; }
-            if (BepInExInstaller.IsGameRunning()) { MessageBox.Show(this, "Закройте игру перед установкой."); return; }
+            if (!GameLocator.ValidateGameDir(dir)) { MessageBox.Show(this, T("InstBadFolder")); return; }
+            if (BepInExInstaller.IsGameRunning()) { MessageBox.Show(this, T("InstCloseGame")); return; }
 
             try
             {
-                _progress.Visible = true; AppendLog("Установка…");
+                _progress.Visible = true; AppendLog(T("InstInstalling"));
                 using (var bep = _bepinex.Checked ? OpenResource("BepInEx_win_x64_5.4.23.5.zip") : null)
                 using (var fw = _framework.Checked ? OpenResource("GK2.Framework.zip") : null)
                 using (var patcher = _autoLoader.Checked ? OpenResource("GK2.WorkshopAutoLoader.dll") : null)
                 using (var loader = _autoLoader.Checked ? OpenResource("GK2.WorkshopLoader.dll") : null)
                     BepInExInstaller.Install(dir, bep, fw, patcher, loader, _backup.Checked, AppendLog);
                 var problems = BepInExInstaller.Verify(dir, _autoLoader.Checked);
-                AppendLog(problems.Count == 0 ? "Готово. Запустите игру 1 раз — появится меню Mods." : "Проблемы: " + string.Join(", ", problems));
+                AppendLog(problems.Count == 0 ? T("InstDone") : T("InstProblems") + string.Join(", ", problems));
             }
-            catch (Exception ex) { AppendLog("Ошибка: " + ex.Message); }
+            catch (Exception ex) { AppendLog(T("InstError") + ex.Message); }
             finally { _progress.Visible = false; }
         }
 
         private void DoUninstall()
         {
             bool keep = _keepPlugins.Checked;
+            string nl2 = Environment.NewLine + Environment.NewLine;
             string msg =
-                "Удалить BepInEx?" + Environment.NewLine + Environment.NewLine +
-                "Будет удалено ядро BepInEx (core), patchers, загрузчик и файлы в папке игры "
-                + "(winhttp.dll, doorstop_config.ini)." + Environment.NewLine + Environment.NewLine +
-                (keep
-                    ? "Папки BepInEx\\plugins и BepInEx\\config СОХРАНЯЮТСЯ — ваши моды и настройки останутся на месте."
-                    : "ВНИМАНИЕ: вместе с BepInEx удаляются ВСЕ плагины (BepInEx\\plugins) и их настройки "
-                      + "(BepInEx\\config) — включая моды, поставленные вручную." + Environment.NewLine + Environment.NewLine
-                      + "Совет: включите галочку «При удалении оставить мои моды и настройки», если не хотите их потерять.") +
-                Environment.NewLine + Environment.NewLine + "Продолжить?";
+                T("InstUninstallQuestion") + nl2 +
+                T("InstUninstallWhat") + nl2 +
+                (keep ? T("InstUninstallKeep") : T("InstUninstallAll") + nl2 + T("InstUninstallTip")) +
+                nl2 + T("InstContinue");
 
-            var caption = keep ? "Удаление BepInEx (моды сохраняются)" : "Удаление BepInEx — будут удалены ВСЕ плагины";
+            var caption = keep ? T("InstCaptionKeep") : T("InstCaptionAll");
             if (MessageBox.Show(this, msg, caption, MessageBoxButtons.YesNo, MessageBoxIcon.Warning) != DialogResult.Yes) return;
-            try { BepInExInstaller.Uninstall(_gameDir.Text, AppendLog, keep); AppendLog("Удалено."); }
-            catch (Exception ex) { AppendLog("Ошибка: " + ex.Message); }
+            try { BepInExInstaller.Uninstall(_gameDir.Text, AppendLog, keep); AppendLog(T("InstRemoved")); }
+            catch (Exception ex) { AppendLog(T("InstError") + ex.Message); }
         }
     }
 }

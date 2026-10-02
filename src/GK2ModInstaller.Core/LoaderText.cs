@@ -110,7 +110,49 @@ namespace GK2ModInstaller.Core
             ["BulkButtonHint"] = ("Yes — trust all · No — ask about each separately · Cancel — leave as is and ask later", "Yes — доверять всем · No — спросить про каждый отдельно · Cancel — оставить как есть и спросить позже"),
 
             // Loader startup
-            ["StartupFormat"] = ("loader {0} (source: {1})", "загрузчик {0} (источник: {1})")
+            ["StartupFormat"] = ("loader {0} (source: {1})", "загрузчик {0} (источник: {1})"),
+
+            // Installer window (GK2ModInstaller.exe) and BepInExInstaller logs
+            ["InstTitle"] = ("Graveyard Keeper 2 — mod installer", "Graveyard Keeper 2 — установка модов"),
+            ["InstGameFolder"] = ("Game folder:", "Папка игры:"),
+            ["InstBrowse"] = ("Browse…", "Обзор…"),
+            ["InstInstall"] = ("Install", "Установить"),
+            ["InstUninstall"] = ("Remove BepInEx", "Удалить BepInEx"),
+            ["InstBackup"] = ("Back up existing BepInEx", "Бэкап существующего BepInEx"),
+            ["InstAutoLoader"] = ("Auto-load Workshop mods", "Автозагрузка Workshop-модов"),
+            ["InstKeepPlugins"] = ("When removing, keep my mods and settings (plugins, config)", "При удалении оставить мои моды и настройки (plugins, config)"),
+            ["InstFolderFound"] = ("✓ game folder found", "✓ папка игры найдена"),
+            ["InstFolderMissing"] = ("✗ choose the game folder", "✗ укажите папку игры"),
+            ["InstBadFolder"] = ("Wrong game folder.", "Неверная папка игры."),
+            ["InstCloseGame"] = ("Close the game before installing.", "Закройте игру перед установкой."),
+            ["InstInstalling"] = ("Installing…", "Установка…"),
+            ["InstDone"] = ("Done. Start the game once — the Mods menu will appear.", "Готово. Запустите игру 1 раз — появится меню Mods."),
+            ["InstProblems"] = ("Problems: ", "Проблемы: "),
+            ["InstProblem"] = ("Problem: ", "Проблема: "),
+            ["InstError"] = ("Error: ", "Ошибка: "),
+            ["InstRemoved"] = ("Removed.", "Удалено."),
+            ["InstUninstallQuestion"] = ("Remove BepInEx?", "Удалить BepInEx?"),
+            ["InstUninstallWhat"] = ("This removes the BepInEx core, patchers, the loader and the files in the game folder (winhttp.dll, doorstop_config.ini).", "Будет удалено ядро BepInEx (core), patchers, загрузчик и файлы в папке игры (winhttp.dll, doorstop_config.ini)."),
+            ["InstUninstallKeep"] = ("The BepInEx\\plugins and BepInEx\\config folders are KEPT — your mods and settings stay in place.", "Папки BepInEx\\plugins и BepInEx\\config СОХРАНЯЮТСЯ — ваши моды и настройки останутся на месте."),
+            ["InstUninstallAll"] = ("WARNING: ALL plugins (BepInEx\\plugins) and their settings (BepInEx\\config) are removed together with BepInEx — including mods installed by hand.", "ВНИМАНИЕ: вместе с BepInEx удаляются ВСЕ плагины (BepInEx\\plugins) и их настройки (BepInEx\\config) — включая моды, поставленные вручную."),
+            ["InstUninstallTip"] = ("Tip: tick “When removing, keep my mods and settings” if you don't want to lose them.", "Совет: включите галочку «При удалении оставить мои моды и настройки», если не хотите их потерять."),
+            ["InstContinue"] = ("Continue?", "Продолжить?"),
+            ["InstCaptionKeep"] = ("Remove BepInEx (mods are kept)", "Удаление BepInEx (моды сохраняются)"),
+            ["InstCaptionAll"] = ("Remove BepInEx — ALL plugins will be deleted", "Удаление BepInEx — будут удалены ВСЕ плагины"),
+            ["InstCliRemovedKeep"] = ("OK: core removed, plugins and config kept.", "OK: ядро удалено, plugins и config сохранены."),
+            ["InstCliRemoved"] = ("OK: removed.", "OK: удалено."),
+            ["InstCliInstalledTo"] = ("OK: installed to ", "OK: установлено в "),
+            ["InstVerifyNoFolder"] = ("Game folder not found.", "Папка игры не найдена."),
+            ["InstVerifyMissing"] = ("missing ", "нет "),
+            ["InstVerifyEmptyCore"] = ("BepInEx/core is empty", "пусто BepInEx/core"),
+            ["InstVerifyOfflineLoader"] = (" (offline copy of the loader)", " (офлайн-копия загрузчика)"),
+            ["InstLogBackup"] = ("BepInEx backup -> ", "Бэкап BepInEx -> "),
+            ["InstLogUnpackBepInEx"] = ("Unpacking BepInEx…", "Распаковка BepInEx…"),
+            ["InstLogUnpackFramework"] = ("Unpacking GK2 Mod Framework…", "Распаковка GK2 Mod Framework…"),
+            ["InstLogPatcher"] = ("Auto-load patcher -> ", "Патчер автозагрузки -> "),
+            ["InstLogLoader"] = ("Loader: ", "Загрузчик: "),
+            ["InstLogDeleted"] = ("Deleted: ", "Удалено: "),
+            ["InstLogKept"] = ("Kept: BepInEx\\plugins, BepInEx\\config", "Оставлено: BepInEx\\plugins, BepInEx\\config")
         };
 
         public static IReadOnlyDictionary<string, (string En, string Ru)> All => Table;
