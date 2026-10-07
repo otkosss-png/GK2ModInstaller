@@ -199,8 +199,9 @@ namespace GK2ModInstaller.Core
                 }
                 else
                 {
-                    WorkshopSync.DeleteDir(target);
-                    WorkshopSync.CopyDir(entry.Item.SourceDir, target);
+                    // Не стираем папку целиком: там же лежат файлы, созданные модом или игроком
+                    // (переводы Localization\*.json и т.п.) — их терять нельзя.
+                    WorkshopSync.SyncDir(entry.Item.SourceDir, target, log);
                     CopyItemConfigs(entry.Item, configDir, log);
                 }
 
@@ -330,7 +331,7 @@ namespace GK2ModInstaller.Core
                     // Плагин: копируем, только если копии нет (первый запуск после ручной чистки).
                     else if (!Directory.Exists(target))
                     {
-                        WorkshopSync.CopyDir(entry.Item.SourceDir, target);
+                        WorkshopSync.SyncDir(entry.Item.SourceDir, target, log);
                         CopyItemConfigs(entry.Item, configDir, log);
                         log?.Invoke(string.Format(LoaderText.RestoredApprovedCopy, entry.Item.Id));
                     }
