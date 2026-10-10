@@ -103,9 +103,18 @@ namespace GK2ModInstaller.Core
                     kind = WorkshopItemKind.GameFolder;
                     sourceDir = dir;
                 }
+                else if (HasLooseDlls(dir))
+                {
+                    // Многие авторы кладут в айтем просто папку мода (DLL + Localization) без
+                    // BepInEx\plugins — это та же папка, что игрок копирует в plugins руками.
+                    // Берём айтем целиком: BepInEx грузит DLL и из подпапок.
+                    kind = WorkshopItemKind.BepInExPlugin;
+                    sourceDir = dir;
+                    pluginsDir = dir;
+                }
                 else
                 {
-                    continue;
+                    continue; // переводы/озвучка и прочие данные — их ставит сама игра, молча
                 }
 
                 var dlls = Directory.GetFiles(sourceDir, "*.dll", SearchOption.AllDirectories)
@@ -140,6 +149,26 @@ namespace GK2ModInstaller.Core
         }
 
         // Айтем, у которого файлы для папки игры лежат прямо в корне (GraveyardKeeper2_Data / Languages).
+        // DLL в айтеме вне известных раскладок. Не считаем: всё под BepInEx\ (патчеры/ядро — это не
+        // плагины) и файлы самого загрузчика (айтем Auto-Loader: Loader\GK2.WorkshopLoader.dll).
+        internal static bool HasLooseDlls(string dir)
+        {
+            try
+            {
+                var bepinex = Path.Combine(dir, "BepInEx") + Path.DirectorySeparatorChar;
+                foreach (var dll in Directory.GetFiles(dir, "*.dll", SearchOption.AllDirectories))
+                {
+                    if (dll.StartsWith(bepinex, StringComparison.OrdinalIgnoreCase)) continue;
+                    var name = Path.GetFileName(dll);
+                    if (name.StartsWith("GK2.WorkshopLoader", StringComparison.OrdinalIgnoreCase)
+                        || name.StartsWith("GK2.WorkshopAutoLoader", StringComparison.OrdinalIgnoreCase)) return false;
+                    return true;
+                }
+            }
+            catch { }
+            return false;
+        }
+
         private static bool HasGameLayoutAtRoot(string dir)
         {
             foreach (var name in new[] { "GraveyardKeeper2_Data", "Languages" })

@@ -89,6 +89,40 @@ namespace GK2ModInstaller.Tests
         }
 
         [Fact]
+        public void Mod_folder_at_item_root_is_a_plugin_item()
+        {
+            string root = Tmp();
+            try
+            {
+                var mod = Path.Combine(root, "400", "GK2ZombieMoreEquipment");
+                Directory.CreateDirectory(Path.Combine(mod, "Localization"));
+                File.WriteAllText(Path.Combine(mod, "GK2ZombieMoreEquipment.dll"), "x");
+                File.WriteAllText(Path.Combine(mod, "Localization", "en.json"), "{}");
+                var item = Assert.Single(WorkshopItemsScanner.Scan(root, null));
+                Assert.Equal(WorkshopItemKind.BepInExPlugin, item.Kind);
+                Assert.Equal(Path.Combine(root, "400"), item.SourceDir);
+                Assert.Single(item.DllFiles);
+            }
+            finally { Directory.Delete(root, true); }
+        }
+
+        [Fact]
+        public void Auto_loader_item_itself_is_not_a_plugin()
+        {
+            string root = Tmp();
+            try
+            {
+                var item = Path.Combine(root, "3807406994");
+                Directory.CreateDirectory(Path.Combine(item, "Loader"));
+                Directory.CreateDirectory(Path.Combine(item, "BepInEx", "patchers"));
+                File.WriteAllText(Path.Combine(item, "Loader", "GK2.WorkshopLoader.dll"), "x");
+                File.WriteAllText(Path.Combine(item, "BepInEx", "patchers", "GK2.WorkshopAutoLoader.dll"), "x");
+                Assert.Empty(WorkshopItemsScanner.Scan(root, null));
+            }
+            finally { Directory.Delete(root, true); }
+        }
+
+        [Fact]
         public void Missing_root_gives_empty_list()
         {
             Assert.Empty(WorkshopItemsScanner.Scan(Path.Combine(Path.GetTempPath(), "gk2none_" + Guid.NewGuid().ToString("N")), null));
